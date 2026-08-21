@@ -588,7 +588,7 @@ body {
 }
 
 .banner-subtitle {
-    color: var(--salmon-pink);
+    color: white;
     font-size: var(--fs-7);
     font-weight: var(--weight-500);
     text-transform: capitalize;
@@ -597,7 +597,7 @@ body {
 }
 
 .banner-title {
-    color: var(--eerie-black);
+    color: white;
     font-size: var(--fs-1);
     text-transform: uppercase;
     line-height: 1;
@@ -607,7 +607,7 @@ body {
 .banner-text { display: none; }
 
 .banner-btn {
-    background: var(--salmon-pink);
+    background: orange;
     color: var(--white);
     width: max-content;
     font-size: var(--fs-11);
