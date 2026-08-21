@@ -10,7 +10,7 @@
         // Verificação de sessão via fetch
         (async function() {
             try {
-                const response = await fetch('../api/check_session.php');
+                const response = await fetch('check_session.php');
                 const data = await response.json();
                 
                 if (!data.logado) {

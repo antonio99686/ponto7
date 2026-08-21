@@ -1,11 +1,16 @@
 <?php
 // login/index.php
 session_start();
-require_once 'admin/function/conexao.php';
+require_once '../admin/function/conexao.php';
 
 // Verificar se já está logado
-if (isset($_SESSION['cliente_id']) && isset($_SESSION['logado']) && $_SESSION['logado'] === true) {
-    header('Location: ../painel-cliente/index.php');
+if (isset($_SESSION['usuario_id']) && isset($_SESSION['logado']) && $_SESSION['logado'] === true) {
+    // Redirecionar baseado no tipo de usuário
+    if ($_SESSION['usuario_tipo'] === 'admin' || $_SESSION['usuario_tipo'] === 'vendedor') {
+        header('Location: ../admin/index.php');
+    } else {
+        header('Location: ../painel-cliente/index.php');
+    }
     exit();
 }
 
@@ -27,18 +32,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($usuario['status'] !== 'ativo') {
                     $erro = 'Usuário inativo ou bloqueado. Entre em contato com o suporte.';
                 } else {
-                    $_SESSION['cliente_id'] = $usuario['id_usuario'];
-                    $_SESSION['cliente_nome'] = $usuario['nome_completo'];
-                    $_SESSION['cliente_email'] = $usuario['email'];
-                    $_SESSION['cliente_tipo'] = $usuario['tipo_usuario'];
+                    // Salvar dados na sessão
+                    $_SESSION['usuario_id'] = $usuario['id_usuario'];
+                    $_SESSION['usuario_nome'] = $usuario['nome_completo'];
+                    $_SESSION['usuario_email'] = $usuario['email'];
+                    $_SESSION['usuario_tipo'] = $usuario['tipo_usuario'];
                     $_SESSION['logado'] = true;
                     
                     // Atualizar último login
                     $stmt = $pdo->prepare("UPDATE usuarios SET ultimo_login = NOW() WHERE id_usuario = ?");
                     $stmt->execute([$usuario['id_usuario']]);
                     
-                    // Redirecionar para o painel do cliente
-                    header('Location: ../painel-cliente/index.php');
+                    // Redirecionar baseado no tipo de usuário
+                    if ($usuario['tipo_usuario'] === 'admin' || $usuario['tipo_usuario'] === 'vendedor') {
+                        header('Location: ../admin/index.php');
+                    } else {
+                        header('Location: ../painel-cliente/index.php');
+                    }
                     exit();
                 }
             } else {
@@ -300,6 +310,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .voltar-loja:hover {
             color: var(--primary);
+        }
+
+        /* Badge de tipo de conta */
+        .tipo-conta {
+            display: inline-block;
+            padding: 2px 12px;
+            border-radius: 12px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+
+        .tipo-conta.admin {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .tipo-conta.cliente {
+            background: #dbeafe;
+            color: #1e40af;
         }
 
         @media (max-width: 480px) {

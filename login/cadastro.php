@@ -1,7 +1,7 @@
 <?php
 // login/cadastro.php
 session_start();
-require_once '../config/database.php';
+require_once '../admin/function/conexao.php';
 
 // Verificar se já está logado
 if (isset($_SESSION['cliente_id']) && isset($_SESSION['logado']) && $_SESSION['logado'] === true) {

@@ -503,7 +503,7 @@ $carrinho_count = $stmt->fetch()['total'] ?? 0;
     <script>
         function logout() {
             if (confirm('Tem certeza que deseja sair?')) {
-                window.location.href = '../login/logout.php';
+                window.location.href = 'login/logout.php';
             }
         }
     </script>
