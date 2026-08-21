@@ -6,12 +6,17 @@ require_once '../admin/function/conexao.php';
 // Verificar se já está logado
 if (isset($_SESSION['usuario_id']) && isset($_SESSION['logado']) && $_SESSION['logado'] === true) {
     // Redirecionar baseado no tipo de usuário
-    if ($_SESSION['usuario_tipo'] === 'admin' || $_SESSION['usuario_tipo'] === 'vendedor') {
+    if ($_SESSION['usuario_tipo'] === 'admin' || $_SESSION['usuario_tipo'] === 'cliente') {
         header('Location: ../admin/index.php');
-    } else {
+        exit();
+    } elseif ($_SESSION['usuario_tipo'] === 'cliente') {
         header('Location: ../painel-cliente/index.php');
+        exit();
+    } else {
+        // Tipo desconhecido, redirecionar para a loja
+        header('Location: ../index.php');
+        exit();
     }
-    exit();
 }
 
 $erro = '';
@@ -46,8 +51,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Redirecionar baseado no tipo de usuário
                     if ($usuario['tipo_usuario'] === 'admin' || $usuario['tipo_usuario'] === 'vendedor') {
                         header('Location: ../admin/index.php');
-                    } else {
+                    } elseif ($usuario['tipo_usuario'] === 'cliente') {
                         header('Location: ../painel-cliente/index.php');
+                    } else {
+                        // Tipo desconhecido, redirecionar para a loja
+                        header('Location: ../index.php');
                     }
                     exit();
                 }
@@ -312,7 +320,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             color: var(--primary);
         }
 
-        /* Badge de tipo de conta */
+        /* Badge de tipo de conta - aparece no login */
         .tipo-conta {
             display: inline-block;
             padding: 2px 12px;
