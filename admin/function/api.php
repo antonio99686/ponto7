@@ -1,6 +1,29 @@
 <?php
-// api/admin_api.php
 
+session_start();
+
+// Verificar se o usuário está logado
+function checkAuth() {
+    if (!isset($_SESSION['usuario_id']) || !isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+        http_response_code(401);
+        echo json_encode(['success' => false, 'error' => 'Não autorizado. Faça login primeiro.']);
+        exit();
+    }
+    
+    // Verificar se é admin (opcional)
+    if ($_SESSION['usuario_tipo'] !== 'admin' && $_SESSION['usuario_tipo'] !== 'vendedor') {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Acesso negado. Você não tem permissão para acessar esta área.']);
+        exit();
+    }
+}
+
+// Chamar a verificação para todas as requisições da API
+// (exceto login que é público)
+$public_actions = ['login', 'check_session'];
+if (!in_array($_GET['action'] ?? '', $public_actions)) {
+    checkAuth();
+}
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
@@ -13,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once 'conexao.php';
-    
+
 class AdminAPI {
     private $pdo;
     

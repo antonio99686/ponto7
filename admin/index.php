@@ -4,7 +4,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>⚡ Construmix - Painel Administrativo</title>
+  <title> Ferragem Ponto 7 - Painel Administrativo</title>
+   <!-- Redirecionar se não estiver logado -->
+    <script>
+        // Verificação de sessão via fetch
+        (async function() {
+            try {
+                const response = await fetch('../api/check_session.php');
+                const data = await response.json();
+                
+                if (!data.logado) {
+                    window.location.href = '../login/index.php';
+                }
+            } catch (error) {
+                console.error('Erro ao verificar sessão:', error);
+                window.location.href = '../login/index.php';
+            }
+        })();
+    </script>
   <style>
     /* ============================================================
            ESTILOS DO PAINEL ADMINISTRATIVO

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3306
--- Tempo de geração: 21/08/2026 às 00:40
+-- Tempo de geração: 21/08/2026 às 01:31
 -- Versão do servidor: 9.1.0
 -- Versão do PHP: 8.3.14
 
@@ -324,21 +324,21 @@ CREATE TABLE IF NOT EXISTS `produtos` (
   KEY `idx_estoque` (`estoque_atual`),
   KEY `idx_slug` (`slug`),
   KEY `idx_sku` (`sku`)
-) ENGINE=MyISAM AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=MyISAM AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Despejando dados para a tabela `produtos`
 --
 
 INSERT INTO `produtos` (`id_produto`, `nome`, `descricao`, `sku`, `categoria_id`, `subcategoria`, `marca`, `unidade_medida`, `peso_kg`, `dimensoes`, `imagem_principal`, `imagem_hover`, `imagens_galeria`, `preco_custo`, `preco_venda`, `preco_promocional`, `desconto_percentual`, `data_inicio_promocao`, `data_fim_promocao`, `estoque_atual`, `estoque_minimo`, `estoque_maximo`, `localizacao_estoque`, `status`, `destaque`, `novo`, `avaliacao_media`, `total_avaliacoes`, `meta_titulo`, `meta_descricao`, `slug`, `data_cadastro`, `data_atualizacao`, `criado_por`) VALUES
-(1, 'Martelo Unha 29mm', 'Martelo com cabo de madeira, cabeça de aço forjado', 'FER-001', 1, NULL, 'Tramontina', 'un', 0.000, NULL, NULL, NULL, NULL, 30.00, 45.90, NULL, 0.00, NULL, NULL, 50, 5, 100, NULL, 'ativo', 1, 0, 0.00, 0, NULL, NULL, NULL, '2026-08-21 00:39:12', '2026-08-21 00:39:12', NULL),
 (2, 'Furadeira de Impacto 600W', 'Furadeira com 600W de potência, 3 funções, mandril 13mm', 'FER-002', 2, NULL, 'Bosch', 'un', 0.000, NULL, NULL, NULL, NULL, 150.00, 220.00, NULL, 0.00, NULL, NULL, 15, 5, 100, NULL, 'ativo', 1, 1, 0.00, 0, NULL, NULL, NULL, '2026-08-21 00:39:12', '2026-08-21 00:39:12', NULL),
 (3, 'Caixa de Parafuso 4x40 (100un)', 'Parafusos autoatarrachantes com fenda Philips', 'FER-003', 1, NULL, 'Ciser', 'un', 0.000, NULL, NULL, NULL, NULL, 10.00, 18.50, NULL, 0.00, NULL, NULL, 200, 5, 100, NULL, 'ativo', 0, 0, 0.00, 0, NULL, NULL, NULL, '2026-08-21 00:39:12', '2026-08-21 00:39:12', NULL),
 (4, 'Trena a Laser 40m', 'Trena digital com alcance de 40 metros, precisão de 1mm', 'FER-004', 5, NULL, 'Stanley', 'un', 0.000, NULL, NULL, NULL, NULL, 95.00, 150.00, NULL, 0.00, NULL, NULL, 8, 5, 100, NULL, 'ativo', 1, 0, 0.00, 0, NULL, NULL, NULL, '2026-08-21 00:39:12', '2026-08-21 00:39:12', NULL),
 (5, 'Lata de Tinta Acrílica 18L', 'Tinta acrílica premium, alto desempenho, acabamento fosco', 'FER-005', 4, NULL, 'Suvinil', 'un', 0.000, NULL, NULL, NULL, NULL, 200.00, 280.00, NULL, 0.00, NULL, NULL, 12, 5, 100, NULL, 'ativo', 1, 0, 0.00, 0, NULL, NULL, NULL, '2026-08-21 00:39:12', '2026-08-21 00:39:12', NULL),
 (6, 'Disco de Corte para Aço', 'Disco de corte para aço inoxidável, 4\" x 1/16\"', 'FER-006', 2, NULL, 'Norton', 'un', 0.000, NULL, NULL, NULL, NULL, 5.00, 8.00, NULL, 0.00, NULL, NULL, 120, 5, 100, NULL, 'ativo', 0, 0, 0.00, 0, NULL, NULL, NULL, '2026-08-21 00:39:12', '2026-08-21 00:39:12', NULL),
 (7, 'Chave de Fenda Conjunto 6 Peças', 'Kit com chaves de fenda de diversos tamanhos', 'FER-007', 1, NULL, 'Gedore', 'un', 0.000, NULL, NULL, NULL, NULL, 30.00, 45.00, NULL, 0.00, NULL, NULL, 30, 5, 100, NULL, 'ativo', 0, 0, 0.00, 0, NULL, NULL, NULL, '2026-08-21 00:39:12', '2026-08-21 00:39:12', NULL),
-(8, 'Nível de Bolha 1m', 'Nível de bolha com precisão de 0.5mm/m', 'FER-008', 5, NULL, 'Starrett', 'un', 0.000, NULL, NULL, NULL, NULL, 22.00, 35.00, NULL, 0.00, NULL, NULL, 25, 5, 100, NULL, 'ativo', 0, 0, 0.00, 0, NULL, NULL, NULL, '2026-08-21 00:39:12', '2026-08-21 00:39:12', NULL);
+(8, 'Nível de Bolha 1m', 'Nível de bolha com precisão de 0.5mm/m', 'FER-008', 5, NULL, 'Starrett', 'un', 0.000, NULL, NULL, NULL, NULL, 22.00, 35.00, NULL, 0.00, NULL, NULL, 25, 5, 100, NULL, 'ativo', 0, 0, 0.00, 0, NULL, NULL, NULL, '2026-08-21 00:39:12', '2026-08-21 00:39:12', NULL),
+(9, 'adasd', 'asdasda', 'ADASD', NULL, NULL, NULL, 'un', 0.000, NULL, NULL, NULL, NULL, NULL, 5.00, NULL, 0.00, NULL, NULL, 5, 5, 100, NULL, 'ativo', 0, 0, 0.00, 0, NULL, NULL, NULL, '2026-08-21 00:58:15', '2026-08-21 00:58:15', NULL);
 
 -- --------------------------------------------------------
 
