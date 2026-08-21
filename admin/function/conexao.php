@@ -1,30 +1,16 @@
 <?php
-function conn()
-{
-    require_once "conn.php";
-    $conexao = mysqli_connect(
-        $conn['host'],
-        $conn['user'],
-        $conn['pass'],
-        $conn['db']
-    );
+// config/database.php
+define('DB_HOST', 'localhost');
+define('DB_NAME', 'mattes');
+define('DB_USER', 'root');
+define('DB_PASS', '');
 
-    if ($conexao === false) {
-        echo "Erro ao conectar á base dados.N° do erro" .
-            mysqli_connect_errno() . "." .
-            mysqli_connect_error();
-        exit;
-    }
-    return $conexao;
+try {
+    $pdo = new PDO("mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4", DB_USER, DB_PASS);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+    $pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
+} catch(PDOException $e) {
+    die("Erro de conexão: " . $e->getMessage());
 }
-
-
-function executarSQL($conexao, $sql)
-{
-    $result = mysqli_query($conexao, $sql);
-    if ($result === false) {
-        echo "Erro ao executar o comando SQL. " . mysqli_errno($conexao) . ": " . mysqli_error($conexao);
-        die(); // Stop further execution if there's an error
-    }
-    return $result;
-}
+?>

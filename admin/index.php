@@ -1,2648 +1,2449 @@
-<?php
-session_start();
-require_once "../crud/function/conexao.php";
-$conexao = conn();
-
-
-// Verifica se a sessão está iniciada e se o usuário está logado
-if (!isset($_SESSION['id_usuario']) || empty($_SESSION['id_usuario'])) {
-    // Redireciona para a página de login se não estiver logado
-    header("Location: ../login.php");
-    exit();
-}
-
-// Obtém o ID do usuário da sessão
-$id_usuario = $_SESSION['id_usuario'];
-
-// Consulta SQL para obter os dados do usuário utilizando prepared statements para evitar injeção de SQL
-$sql = "SELECT * FROM usuario WHERE id_usuario = ?";
-$stmt = mysqli_prepare($conexao, $sql);
-mysqli_stmt_bind_param($stmt, "i", $id_usuario);
-mysqli_stmt_execute($stmt);
-$resultado = mysqli_stmt_get_result($stmt);
-
-// Verifica se a consulta foi bem-sucedida
-if (!$resultado || mysqli_num_rows($resultado) == 0) {
-    echo "Erro ao consultar o banco de dados: " . mysqli_error($conexao);
-    exit();
-}
-
-// Obtém os dados do usuário
-$dados = mysqli_fetch_assoc($resultado);
-
-?>
 <!DOCTYPE html>
 <html lang="pt-br">
 
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AL - Artes</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>⚡ Construmix - Painel Administrativo</title>
+  <style>
+    /* ============================================================
+           ESTILOS DO PAINEL ADMINISTRATIVO
+           ============================================================ */
 
-  <link rel="shortcut icon" href="https://i.postimg.cc/R07Wy2gJ/favicon.png" type="image/x-icon" />
+    /* ===== RESET E VARIÁVEIS ===== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary: #0f3b3f;
+      --primary-dark: #0a2a2d;
+      --primary-light: #d4edf0;
+      --accent: #e8850c;
+      --accent-hover: #d0750a;
+      --dark: #1a1a2e;
+      --gray-50: #f7f8fa;
+      --gray-100: #edf0f3;
+      --gray-200: #dce1e8;
+      --gray-300: #bcc3cd;
+      --gray-500: #7a8599;
+      --gray-700: #3d4552;
+      --white: #ffffff;
+      --success: #2d9b7a;
+      --success-dark: #217a5f;
+      --danger: #d94a5a;
+      --warning: #f59e0b;
+      --info: #3b82f6;
+      --shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+      --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.1);
+      --radius: 16px;
+      --radius-sm: 8px;
+      --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      --sidebar-width: 240px;
+      --header-height: 70px;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--gray-50);
+      color: var(--dark);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+    }
+
+    /* ============================================================
+           SIDEBAR
+           ============================================================ */
+    .sidebar {
+      width: var(--sidebar-width);
+      height: 100vh;
+      background: var(--primary);
+      color: var(--white);
+      position: fixed;
+      left: 0;
+      top: 0;
+      overflow-y: auto;
+      z-index: 100;
+      transition: transform var(--transition);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .sidebar::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+    }
+
+    .sidebar-brand {
+      padding: 24px 20px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .sidebar-brand .logo-icon {
+      font-size: 2rem;
+    }
+
+    .sidebar-brand h2 {
+      font-size: 1.3rem;
+      font-weight: 800;
+    }
+
+    .sidebar-brand h2 span {
+      color: var(--accent);
+    }
+
+    .sidebar-menu {
+      flex: 1;
+      padding: 20px 12px;
+    }
+
+    .sidebar-menu .menu-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: rgba(255, 255, 255, 0.4);
+      padding: 12px 12px 8px;
+      font-weight: 600;
+    }
+
+    .sidebar-menu a {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      color: rgba(255, 255, 255, 0.7);
+      text-decoration: none;
+      border-radius: var(--radius-sm);
+      transition: all var(--transition);
+      font-weight: 500;
+      font-size: 0.9rem;
+      cursor: pointer;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+    }
+
+    .sidebar-menu a:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--white);
+    }
+
+    .sidebar-menu a.active {
+      background: var(--accent);
+      color: var(--white);
+      box-shadow: 0 4px 12px rgba(232, 133, 12, 0.3);
+    }
+
+    .sidebar-menu a .icon {
+      font-size: 1.2rem;
+      width: 24px;
+      text-align: center;
+    }
+
+    .sidebar-menu a .badge {
+      margin-left: auto;
+      background: var(--danger);
+      color: white;
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-weight: 600;
+    }
+
+    .sidebar-footer {
+      padding: 16px 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .sidebar-footer .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .sidebar-footer .user-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--white);
+    }
+
+    .sidebar-footer .user-name {
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .sidebar-footer .user-role {
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    /* ============================================================
+           MAIN CONTENT
+           ============================================================ */
+    .main-content {
+      margin-left: var(--sidebar-width);
+      flex: 1;
+      min-height: 100vh;
+    }
+
+    /* ===== HEADER ===== */
+    .top-header {
+      height: var(--header-height);
+      background: var(--white);
+      border-bottom: 1px solid var(--gray-200);
+      padding: 0 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      box-shadow: var(--shadow);
+    }
+
+    .top-header .page-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--dark);
+    }
+
+    .top-header .page-title small {
+      font-weight: 400;
+      color: var(--gray-500);
+      font-size: 0.85rem;
+    }
+
+    .top-header .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .top-header .header-actions .btn-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: none;
+      background: var(--gray-100);
+      cursor: pointer;
+      font-size: 1.1rem;
+      transition: all var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .top-header .header-actions .btn-icon:hover {
+      background: var(--gray-200);
+    }
+
+    .top-header .header-actions .btn-icon .notif-dot {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 8px;
+      height: 8px;
+      background: var(--danger);
+      border-radius: 50%;
+      border: 2px solid var(--white);
+    }
+
+    .hamburger {
+      display: none;
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--dark);
+    }
+
+    /* ============================================================
+           DASHBOARD CONTENT
+           ============================================================ */
+    .dashboard-content {
+      padding: 32px;
+    }
+
+    /* ===== CARDS ===== */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 32px;
+    }
+
+    .stat-card {
+      background: var(--white);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      box-shadow: var(--shadow);
+      border-left: 4px solid var(--primary);
+      transition: all var(--transition);
+    }
+
+    .stat-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .stat-card .stat-label {
+      font-size: 0.85rem;
+      color: var(--gray-500);
+      font-weight: 500;
+    }
+
+    .stat-card .stat-value {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: var(--dark);
+      margin: 4px 0 2px;
+    }
+
+    .stat-card .stat-change {
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .stat-card .stat-change.positive {
+      color: var(--success);
+    }
+
+    .stat-card .stat-change.negative {
+      color: var(--danger);
+    }
+
+    .stat-card:nth-child(2) {
+      border-left-color: var(--accent);
+    }
+
+    .stat-card:nth-child(3) {
+      border-left-color: var(--success);
+    }
+
+    .stat-card:nth-child(4) {
+      border-left-color: var(--warning);
+    }
+
+    .stat-card:nth-child(5) {
+      border-left-color: var(--info);
+    }
+
+    /* ===== TABELAS ===== */
+    .table-container {
+      background: var(--white);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+      margin-bottom: 32px;
+      overflow-x: auto;
+    }
+
+    .table-container .table-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .table-container .table-header h3 {
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .table-container .table-header .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all var(--transition);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: var(--white);
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+    }
+
+    .btn-accent {
+      background: var(--accent);
+      color: var(--white);
+    }
+
+    .btn-accent:hover {
+      background: var(--accent-hover);
+    }
+
+    .btn-success {
+      background: var(--success);
+      color: var(--white);
+    }
+
+    .btn-success:hover {
+      background: var(--success-dark);
+    }
+
+    .btn-danger {
+      background: var(--danger);
+      color: var(--white);
+    }
+
+    .btn-danger:hover {
+      background: #c0392b;
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--gray-700);
+      border: 1px solid var(--gray-200);
+    }
+
+    .btn-outline:hover {
+      background: var(--gray-100);
+    }
+
+    .btn-sm {
+      padding: 4px 10px;
+      font-size: 0.75rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    table thead {
+      background: var(--gray-50);
+    }
+
+    table th {
+      text-align: left;
+      padding: 12px 16px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      color: var(--gray-500);
+      border-bottom: 2px solid var(--gray-200);
+    }
+
+    table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--gray-100);
+      font-size: 0.9rem;
+    }
+
+    table tbody tr:hover {
+      background: var(--gray-50);
+    }
+
+    .status-badge {
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      display: inline-block;
+    }
+
+    .status-badge.active {
+      background: #d1fae5;
+      color: var(--success-dark);
+    }
+
+    .status-badge.inactive {
+      background: #fee2e2;
+      color: var(--danger);
+    }
+
+    .status-badge.pending {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .status-badge.paid {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .status-badge.shipped {
+      background: #e0e7ff;
+      color: #3730a3;
+    }
+
+    .status-badge.delivered {
+      background: #d1fae5;
+      color: var(--success-dark);
+    }
+
+    .status-badge.cancelled {
+      background: #f3f4f6;
+      color: var(--gray-500);
+    }
+
+    .product-thumb {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius-sm);
+      background: var(--gray-100);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+    }
+
+    /* ============================================================
+           MÓDULOS (seções)
+           ============================================================ */
+    .module {
+      display: none;
+    }
+
+    .module.active {
+      display: block;
+    }
+
+    /* ============================================================
+           FORMULÁRIOS
+           ============================================================ */
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-weight: 600;
+      font-size: 0.85rem;
+      margin-bottom: 4px;
+      color: var(--gray-700);
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-sm);
+      font-size: 0.95rem;
+      transition: border var(--transition);
+      font-family: inherit;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(15, 59, 63, 0.1);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 600px) {
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ============================================================
+           MODAL
+           ============================================================ */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-overlay.show {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--white);
+      border-radius: var(--radius);
+      padding: 32px;
+      max-width: 600px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: var(--shadow-lg);
+      animation: modalSlide 0.3s ease;
+    }
+
+    @keyframes modalSlide {
+      from {
+        transform: translateY(-30px);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .modal .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--gray-200);
+    }
+
+    .modal .modal-header h3 {
+      font-size: 1.2rem;
+    }
+
+    .modal .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--gray-500);
+      transition: color var(--transition);
+    }
+
+    .modal .modal-close:hover {
+      color: var(--danger);
+    }
+
+    .modal .modal-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+      justify-content: flex-end;
+    }
+
+    /* ============================================================
+           RESPONSIVIDADE
+           ============================================================ */
+    @media (max-width: 768px) {
+      .sidebar {
+        transform: translateX(-100%);
+      }
+
+      .sidebar.open {
+        transform: translateX(0);
+      }
+
+      .main-content {
+        margin-left: 0;
+      }
+
+      .hamburger {
+        display: block;
+      }
+
+      .top-header {
+        padding: 0 16px;
+      }
+
+      .dashboard-content {
+        padding: 16px;
+      }
+
+      .stats-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .top-header .page-title small {
+        display: none;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .table-container {
+        padding: 16px;
+      }
+
+      .modal {
+        padding: 20px;
+        margin: 10px;
+      }
+    }
+
+    /* ============================================================
+           TOAST NOTIFICATION
+           ============================================================ */
+    .toast-container {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .toast {
+      background: var(--dark);
+      color: var(--white);
+      padding: 14px 24px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+      font-weight: 500;
+      transform: translateX(120%);
+      opacity: 0;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      border-left: 4px solid var(--accent);
+      min-width: 280px;
+    }
+
+    .toast.show {
+      transform: translateX(0);
+      opacity: 1;
+    }
+
+    .toast.success {
+      border-left-color: var(--success);
+    }
+
+    .toast.error {
+      border-left-color: var(--danger);
+    }
+
+    .toast.warning {
+      border-left-color: var(--warning);
+    }
+
+    /* ============================================================
+           ANIMAÇÕES
+           ============================================================ */
+    .fade-in {
+      animation: fadeIn 0.4s ease;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* ============================================================
+           LOADING SPINNER
+           ============================================================ */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      color: var(--gray-500);
+    }
+
+    .loading::after {
+      content: '';
+      width: 24px;
+      height: 24px;
+      border: 3px solid var(--gray-200);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-left: 12px;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--gray-500);
+    }
+
+    .empty-state .icon {
+      font-size: 3rem;
+      display: block;
+      margin-bottom: 12px;
+    }
+
+    .empty-state h4 {
+      font-size: 1.1rem;
+      color: var(--dark);
+      margin-bottom: 4px;
+    }
+
+    /* ============================================================
+           CHECKBOX SWITCH
+           ============================================================ */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .switch .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--gray-300);
+      transition: var(--transition);
+      border-radius: 24px;
+    }
+
+    .switch .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background: var(--white);
+      transition: var(--transition);
+      border-radius: 50%;
+    }
+
+    .switch input:checked+.slider {
+      background: var(--success);
+    }
+
+    .switch input:checked+.slider:before {
+      transform: translateX(20px);
+    }
+  </style>
 </head>
 
 <body>
-  <div class="overlay" data-overlay></div>
-
-  
-
-
-
-  <header>
-    <div class="header-top">
-      <div class="container">
-        <ul class="header-social-container">
-          <li>
-            <a href="#" class="social-link"><ion-icon name="logo-facebook"></ion-icon></a>
-          </li>
-          <li>
-            <a href="#" class="social-link"><ion-icon name="logo-twitter"></ion-icon></a>
-          </li>
-          <li>
-            <a href="#" class="social-link"><ion-icon name="logo-instagram"></ion-icon></a>
-          </li>
-          <li>
-            <a href="#" class="social-link"><ion-icon name="logo-linkedin"></ion-icon></a>
-          </li>
-        </ul>
-
-        <div class="header-alert-news">
-          <p><b>BEM VINDO(A)</b> <?php echo htmlspecialchars($dados['nome']);?> </p>
-        </div>
-
-        
-      </div>
+  <!-- ============================================================
+    SIDEBAR
+    ============================================================ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <span class="logo-icon">
+        <img src="../img/logo.png" alt="image" width="350px" height="200px" style="position: relative; right: 20%;" /></span>
     </div>
 
-    <div class="header-main">
-      <div class="container">
-        <a href="#" class="header-logo"><img src="../img/AL ARTES.jpg" alt="logo" width="120px" height="120px"
-            height="36" /></a>
+    <nav class="sidebar-menu">
+      <div class="menu-label">Menu Principal</div>
+      <a href="#" class="active" data-module="dashboard">
+        <span class="icon">📊</span> Dashboard
+      </a>
+      <a href="#" data-module="produtos">
+        <span class="icon">📦</span> Produtos
+        <span class="badge" id="badge-produtos">0</span>
+      </a>
+      <a href="#" data-module="pedidos">
+        <span class="icon">📋</span> Pedidos
+        <span class="badge" id="badge-pedidos">0</span>
+      </a>
+      <a href="#" data-module="clientes">
+        <span class="icon">👤</span> Clientes
+      </a>
+      <a href="#" data-module="categorias">
+        <span class="icon">📂</span> Categorias
+      </a>
 
-        <div class="header-search-container">
-          <input type="search" name="search" class="search-field" placeholder="Digite o nome do seu produto" />
-
-       
-        </div>
-
-        <div class="header-user-actions">
-          <button class="action-btn">
-          <img class="photo" src="../imgPerfil/<?php echo htmlspecialchars($dados['perfil_img']); ?>" alt="Foto de perfil do usuário">
-          </button>
-
-
-         
-
-          
-        </div>
-      </div>
-    </div>
-
-    <nav class="desktop-navigation-menu">
-      <div class="container">
-        <ul class="desktop-menu-category-list">
-          <li class="menu-category">
-            <a href="index.php" class="menu-title">Home</a>
-          </li>
-
-          <li class="menu-category">
-            <a href="#" class="menu-title">CATEGORIA</a>
-            <div class="dropdown-panel">
-              <ul class="dropdown-panel-list">
-                <li class="menu-title"><a href="#">Costura Criativa</a></li>
-                <li class="panel-list-item"><a href="#">Patchwork </a></li>
-                <li class="panel-list-item"><a href="#">Bordado </a></li>
-                <li class="panel-list-item"><a href="#">Crochê </a></li>
-                <li class="panel-list-item"><a href="#">Tricô  </a></li>
-              </ul>
-
-              <ul class="dropdown-panel-list">
-                <li class="menu-title"><a href="#">Masculino</a></li>
-                <li class="panel-list-item"><a href="#">Formal</a></li>
-                <li class="panel-list-item"><a href="#">Casual</a></li>
-                <li class="panel-list-item"><a href="#">Esporte</a></li>
-                <li class="panel-list-item"><a href="#">Jaqueta</a></li>
-                <li class="panel-list-item"><a href="#"></a></li>
-              </ul>
-
-              <ul class="dropdown-panel-list">
-                <li class="menu-title"><a href="#">Feminino</a></li>
-                <li class="panel-list-item"><a href="#">Formal</a></li>
-                <li class="panel-list-item"><a href="#">Casual</a></li>
-                <li class="panel-list-item"><a href="#">Esporte</a></li>
-                <li class="panel-list-item"><a href="#">Jaqueta</a></li>
-                <li class="panel-list-item"><a href="#"></a></li>
-              </ul>
-
-              <ul class="dropdown-panel-list">
-                <li class="menu-title"><a href="#">INFANTIL</a></li>
-                <li class="panel-list-item"><a href="#">Formal</a></li>
-                <li class="panel-list-item"><a href="#">Casual</a></li>
-                <li class="panel-list-item"><a href="#">Esporte</a></li>
-                <li class="panel-list-item"><a href="#">Jaqueta</a></li>
-                <li class="panel-list-item"><a href="#"></a></li>
-              </ul>
-            </div>
-          </li>
-          
-          <li class="menu-category">
-            <a href="ofertas/cad/cadOferta.php" class="menu-title">CADASTRAR</a>
-          </li>
-          <li class="menu-category">
-            <a href="ofertas/cad/cadOferta.php" class="menu-title">EDITAR</a>
-          </li>
-
-          <li class="menu-category">
-            <a href="ofertas/index.php" class="menu-title">Ofertas Quentes</a>
-          </li>
-
-          <li class="menu-category">
-            <a href="logout.php" class="menu-title">SAIR</a>
-          </li>
-
-
-        </ul>
-      </div>
+      <div class="menu-label" style="margin-top: 16px;">Configurações</div>
+      <a href="#" data-module="cupons">
+        <span class="icon">🎫</span> Cupons
+      </a>
+      <a href="#" data-module="configuracoes">
+        <span class="icon">⚙️</span> Configurações
+      </a>
     </nav>
 
-    <div class="mobile-bottom-navigation">
-      <button class="action-btn" data-mobile-menu-open-btn>
-        <ion-icon name="menu-outline"></ion-icon>
-      </button>
-
-      <button class="action-btn">
-        <ion-icon name="bag-handle-outline"></ion-icon>
-        <span class="count">0</span>
-      </button>
-
-      <button class="action-btn">
-        <ion-icon name="home-outline"></ion-icon>
-      </button>
-
-      <button class="action-btn">
-        <ion-icon name="heart-outline"></ion-icon>
-        <span class="count">0</span>
-      </button>
-
-      <button class="action-btn" data-mobile-menu-open-btn>
-        <ion-icon name="grid-outline"></ion-icon>
-      </button>
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar">A</div>
+        <div>
+          <div class="user-name" id="user-name">Administrador</div>
+          <div class="user-role" id="user-email">admin@construmix.com</div>
+        </div>
+      </div>
     </div>
+  </aside>
 
-    <nav class="mobile-navigation-menu has-scrollbar" data-mobile-menu>
-      <div class="menu-top">
-        <h2 class="menu-title">Menu</h2>
-
-        <button class="menu-close-btn" data-mobile-menu-close-btn>
-          <ion-icon name="close-outline"></ion-icon>
+  <!-- ============================================================
+    MAIN CONTENT
+    ============================================================ -->
+  <div class="main-content">
+    <!-- Top Header -->
+    <header class="top-header">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <button class="hamburger" onclick="toggleSidebar()">☰</button>
+        <div class="page-title">
+          Dashboard <small>Visão geral da loja</small>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="btn-icon" title="Notificações" onclick="showToast('🔔 Você tem 3 notificações')">
+          🔔
+          <span class="notif-dot"></span>
         </button>
+        <button class="btn-icon" title="Sair" onclick="logout()">🚪</button>
       </div>
+    </header>
 
-      <ul class="mobile-menu-category-list">
-        <li class="menu-category"><a href="#" class="menu-title">Home</a></li>
+    <!-- Content -->
+    <div class="dashboard-content">
 
-        <li class="menu-category">
-          <button class="accordion-menu" data-accordion-btn>
-            <p class="menu-title">Masculino</p>
+      <!-- ============================================================
+            MÓDULO: DASHBOARD
+            ============================================================ -->
+      <div class="module active" id="mod-dashboard">
+        <!-- Stats -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Total de Produtos</div>
+            <div class="stat-value" id="stat-produtos">--</div>
+            <div class="stat-change positive">↑ Carregando...</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Pedidos Hoje</div>
+            <div class="stat-value" id="stat-pedidos">--</div>
+            <div class="stat-change positive">↑ Carregando...</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Faturamento Mensal</div>
+            <div class="stat-value" id="stat-faturamento">R$ --</div>
+            <div class="stat-change positive">↑ Carregando...</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Clientes Ativos</div>
+            <div class="stat-value" id="stat-clientes">--</div>
+            <div class="stat-change positive">↑ Carregando...</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Produtos em Falta</div>
+            <div class="stat-value" id="stat-falta">--</div>
+            <div class="stat-change negative">⚠️ Verificar estoque</div>
+          </div>
+        </div>
 
-            <div>
-              <ion-icon name="add-outline" class="add-icon"></ion-icon>
-              <ion-icon name="remove-outline" class="remove-icon"></ion-icon>
-            </div>
-          </button>
-
-          <ul class="submenu-category-list" data-accordion>
-            <li class="submenu-category">
-              <a href="#" class="submenu-title">Camisa</a>
-            </li>
-            <li class="submenu-category">
-              <a href="#" class="submenu-title">Short e Jeans</a>
-            </li>
-            <li class="submenu-category">
-              <a href="#" class="submenu-title">Calçados de Segurança</a>
-            </li>
-            <li class="submenu-category">
-              <a href="#" class="submenu-title">Carteira</a>
-            </li>
-          </ul>
-        </li>
-
-        <li class="menu-category">
-          <button class="accordion-menu" data-accordion-btn>
-            <p class="menu-title">Feminino</p>
-
-            <div>
-              <ion-icon name="add-outline" class="add-icon"></ion-icon>
-              <ion-icon name="remove-outline" class="remove-icon"></ion-icon>
-            </div>
-          </button>
-
-          <ul class="submenu-category-list" data-accordion>
-            <li class="submenu-category">
-              <a href="#" class="submenu-title">Vestido e vestido</a>
-            </li>
-            <li class="submenu-category">
-              <a href="#" class="submenu-title">Brincos</a>
-            </li>
-            <li class="submenu-category">
-              <a href="#" class="submenu-title">Colar</a>
-            </li>
-            <li class="submenu-category">
-              <a href="#" class="submenu-title">Kit de maquiagem</a>
-            </li>
-          </ul>
-        </li>
-
-        <li class="menu-category">
-          <button class="accordion-menu" data-accordion-btn>
-            <p class="menu-title">Jewelyr</p>
-
-            <div>
-              <ion-icon name="add-outline" class="add-icon"></ion-icon>
-              <ion-icon name="remove-outline" class="remove-icon"></ion-icon>
-            </div>
-          </button>
-
-          <ul class="submenu-category-list" data-accordion>
-            <li class="submenu-category">
-              <a href="#" class="submenu-title">Brincos</a>
-            </li>
-            <li class="submenu-category">
-              <a href="#" class="submenu-title">Anéis de casal</a>
-            </li>
-            <li class="submenu-category">
-              <a href="#" class="submenu-title">Colar</a>
-            </li>
-            <li class="submenu-category">
-              <a href="#" class="submenu-title">Pulseiras</a>
-            </li>
-          </ul>
-        </li>
-
-        <li class="menu-category">
-          <button class="accordion-menu" data-accordion-btn>
-            <p class="menu-title">Perfume</p>
-
-            <div>
-              <ion-icon name="add-outline" class="add-icon"></ion-icon>
-              <ion-icon name="remove-outline" class="remove-icon"></ion-icon>
-            </div>
-          </button>
-
-          <ul class="submenu-category-list" data-accordion>
-            <li class="submenu-category">
-              <a href="#" class="submenu-title">Roupas Perfume</a>
-            </li>
-            <li class="submenu-category">
-              <a href="#" class="submenu-title">Desodorante</a>
-            </li>
-            <li class="submenu-category">
-              <a href="#" class="submenu-title">Fragrância de flores</a>
-            </li>
-            <li class="submenu-category">
-              <a href="#" class="submenu-title">Ambientador</a>
-            </li>
-          </ul>
-        </li>
-
-        <li class="menu-category"><a href="#" class="menu-title">Blog</a></li>
-
-        <li class="menu-category">
-          <a href="#" class="menu-title">Ofertas quentes</a>
-        </li>
-      </ul>
-
-      <div class="menu-bottom">
-        <ul class="menu-category-list">
-          <li class="menu-category">
-            <button class="accordion-menu" data-accordion-btn>
-              <p class="menu-title">Idioma</p>
-              <ion-icon name="caret-back-outline" class="caret-back"></ion-icon>
-            </button>
-
-            <ul class="submenu-category-list" data-accordion>
-              <li class="submenu-category">
-                <a href="#" class="submenu-title">Inglês</a>
-              </li>
-              <li class="submenu-category">
-                <a href="#" class="submenu-title">Espanhol</a>
-              </li>
-              <li class="submenu-category">
-                <a href="#" class="submenu-title">Francês</a>
-              </li>
-            </ul>
-          </li>
-          <li class="menu-category">
-            <button class="accordion-menu" data-accordion-btn>
-              <p class="menu-title">Moeda</p>
-              <ion-icon name="caret-back-outline" class="caret-back"></ion-icon>
-            </button>
-
-            <ul class="submenu-category-list" data-accordion>
-              <li class="submenu-category">
-                <a href="#" class="submenu-title">USD &dollar;</a>
-              </li>
-              <li class="submenu-category">
-                <a href="#" class="submenu-title">EUR &euro;</a>
-              </li>
-            </ul>
-          </li>
-        </ul>
-
-        <ul class="menu-social-container">
-          <li>
-            <a href="#" class="social-link"><ion-icon name="logo-facebook"></ion-icon></a>
-          </li>
-          <li>
-            <a href="#" class="social-link"><ion-icon name="logo-twitter"></ion-icon></a>
-          </li>
-          <li>
-            <a href="#" class="social-link"><ion-icon name="logo-instagram"></ion-icon></a>
-          </li>
-          <li>
-            <a href="#" class="social-link"><ion-icon name="logo-linkedin"></ion-icon></a>
-          </li>
-        </ul>
-      </div>
-    </nav>
-  </header>
-
-  <main>
-    <div class="banner">
-      <div class="container">
-        <div class="slider-container has-scrollbar">
-          <div class="slider-item">
-            <img src="https://i.postimg.cc/V6Rrdsk1/banner-1.jpg" alt="women's latest fashion sale"
-              class="banner-img" />
-
-            <div class="banner-content">
-              <p class="banner-subtitle">Item em alta</p>
-              <h2 class="banner-title">Última liquidação de moda feminina</h2>
-              <p class="banner-text">A partir de &dollar; <b>20</b>,00</p>
-              <a href="#" class="banner-btn">Compre agora</a>
+        <!-- Últimos Pedidos -->
+        <div class="table-container fade-in">
+          <div class="table-header">
+            <h3>📋 Últimos Pedidos</h3>
+            <div class="actions">
+              <button class="btn btn-primary btn-sm" onclick="showModule('pedidos')">Ver Todos</button>
             </div>
           </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Pedido</th>
+                <th>Cliente</th>
+                <th>Total</th>
+                <th>Data</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="ultimos-pedidos">
+              <tr>
+                <td colspan="5" style="text-align: center; color: var(--gray-500);">Carregando pedidos...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
-          <div class="slider-item">
-            <img src="https://i.postimg.cc/RFXhvPgZ/banner-2.jpg" alt="modern sunglasses" class="banner-img" />
+        <!-- Produtos Mais Vendidos -->
+        <div class="table-container fade-in">
+          <div class="table-header">
+            <h3>🏆 Produtos Mais Vendidos</h3>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Produto</th>
+                <th>Categoria</th>
+                <th>Vendas</th>
+                <th>Receita</th>
+              </tr>
+            </thead>
+            <tbody id="mais-vendidos">
+              <tr>
+                <td colspan="4" style="text-align: center; color: var(--gray-500);">Carregando dados...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-            <div class="banner-content">
-              <p class="banner-subtitle">Acessórios em alta</p>
-              <h2 class="banner-title">Óculos de sol modernos</h2>
-              <p class="banner-text">A partir de &dollar; <b>15</b>,00</p>
-              <a href="#" class="banner-btn">Compre agora</a>
+      <!-- ============================================================
+            MÓDULO: PRODUTOS
+            ============================================================ -->
+      <div class="module" id="mod-produtos">
+        <div class="table-container">
+          <div class="table-header">
+            <h3>📦 Gerenciar Produtos</h3>
+            <div class="actions">
+              <button class="btn btn-accent" onclick="abrirModalProduto()">➕ Novo Produto</button>
             </div>
           </div>
-
-          <div class="slider-item">
-            <img src="https://i.postimg.cc/MTKZ37z2/banner-3.jpg" alt="new fashion summer sale" class="banner-img" />
-
-            <div class="banner-content">
-              <p class="banner-subtitle">Oferta de liquidação</p>
-              <h2 class="banner-title">Nova liquidação de moda de verão</h2>
-              <p class="banner-text">A partir de &dollar; <b>29</b>,99</p>
-              <a href="#" class="banner-btn">Compre agora</a>
-            </div>
+          <div id="produtos-loading" class="loading">Carregando produtos</div>
+          <div id="produtos-content" style="display: none;">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Imagem</th>
+                  <th>Nome</th>
+                  <th>SKU</th>
+                  <th>Preço</th>
+                  <th>Estoque</th>
+                  <th>Status</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tabela-produtos"></tbody>
+            </table>
           </div>
         </div>
       </div>
-    </div>
 
-    <div class="category">
-      <div class="container">
-        <div class="category-item-container has-scrollbar">
-          <div class="category-item">
-            <div class="category-img-box">
-              <img src="https://i.postimg.cc/Xv9x15Q8/dress.png" alt="dress & frock" width="30" />
-            </div>
-
-            <div class="category-content-box">
-              <div class="category-content-flex">
-                <h3 class="category-item-title">Vestido e Vestido</h3>
-                <p class="category-item-amount">(53)</p>
-              </div>
-              <a href="#" class="category-btn">Mostrar Tudo</a>
+      <!-- ============================================================
+            MÓDULO: PEDIDOS
+            ============================================================ -->
+      <div class="module" id="mod-pedidos">
+        <div class="table-container">
+          <div class="table-header">
+            <h3>📋 Gerenciar Pedidos</h3>
+            <div class="actions">
+              <select id="filtro-status-pedido" class="btn btn-outline btn-sm" style="padding: 6px 12px;" onchange="loadPedidos()">
+                <option value="">Todos os status</option>
+                <option value="pendente">Pendente</option>
+                <option value="pago">Pago</option>
+                <option value="processando">Processando</option>
+                <option value="enviado">Enviado</option>
+                <option value="entregue">Entregue</option>
+                <option value="cancelado">Cancelado</option>
+              </select>
             </div>
           </div>
+          <div id="pedidos-loading" class="loading">Carregando pedidos</div>
+          <div id="pedidos-content" style="display: none;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Pedido</th>
+                  <th>Cliente</th>
+                  <th>Itens</th>
+                  <th>Total</th>
+                  <th>Data</th>
+                  <th>Status</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tabela-pedidos"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
-          <div class="category-item">
-            <div class="category-img-box">
-              <img src="https://i.postimg.cc/bNKxXJGF/coat.png" alt="winter wear" width="30" />
-            </div>
-
-            <div class="category-content-box">
-              <div class="category-content-flex">
-                <h3 class="category-item-title">Roupas de inverno</h3>
-                <p class="category-item-amount">(58)</p>
-              </div>
-              <a href="#" class="category-btn">Mostrar tudo</a>
+      <!-- ============================================================
+            MÓDULO: CLIENTES
+            ============================================================ -->
+      <div class="module" id="mod-clientes">
+        <div class="table-container">
+          <div class="table-header">
+            <h3>👤 Gerenciar Clientes</h3>
+            <div class="actions">
+              <button class="btn btn-accent" onclick="showToast('🔜 Funcionalidade em desenvolvimento')">➕ Novo Cliente</button>
             </div>
           </div>
+          <div id="clientes-loading" class="loading">Carregando clientes</div>
+          <div id="clientes-content" style="display: none;">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nome</th>
+                  <th>Email</th>
+                  <th>CPF</th>
+                  <th>Status</th>
+                  <th>Cadastro</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tabela-clientes"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
-          <div class="category-item">
-            <div class="category-img-box">
-              <img src="https://i.postimg.cc/zBthxXZ7/glasses.png" alt="glasses & lens" width="30" />
-            </div>
-
-            <div class="category-content-box">
-              <div class="category-content-flex">
-                <h3 class="category-item-title">Óculos e lentes</h3>
-                <p class="category-item-amount">(68)</p>
-              </div>
-              <a href="#" class="category-btn">Mostrar tudo</a>
+      <!-- ============================================================
+            MÓDULO: CATEGORIAS
+            ============================================================ -->
+      <div class="module" id="mod-categorias">
+        <div class="table-container">
+          <div class="table-header">
+            <h3>📂 Gerenciar Categorias</h3>
+            <div class="actions">
+              <button class="btn btn-accent" onclick="abrirModalCategoria()">➕ Nova Categoria</button>
             </div>
           </div>
+          <div id="categorias-loading" class="loading">Carregando categorias</div>
+          <div id="categorias-content" style="display: none;">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Ícone</th>
+                  <th>Nome</th>
+                  <th>Slug</th>
+                  <th>Status</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tabela-categorias"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
-          <div class="category-item">
-            <div class="category-img-box">
-              <img src="https://i.postimg.cc/g04L0kJp/shorts.png" alt="shorts & jeans" width="30" />
-            </div>
-
-            <div class="category-content-box">
-              <div class="category-content-flex">
-                <h3 class="category-item-title">Shorts e Jeans</h3>
-                <p class="category-item-amount">(84)</p>
-              </div>
-              <a href="#" class="category-btn">Mostrar tudo</a>
+      <!-- ============================================================
+            MÓDULO: CUPONS
+            ============================================================ -->
+      <div class="module" id="mod-cupons">
+        <div class="table-container">
+          <div class="table-header">
+            <h3>🎫 Gerenciar Cupons</h3>
+            <div class="actions">
+              <button class="btn btn-accent" onclick="abrirModalCupom()">➕ Novo Cupom</button>
             </div>
           </div>
-          <div class="category-item">
-            <div class="category-img-box">
-              <img src="https://i.postimg.cc/yddg34gZ/tee.png" alt="t-shirts" width="30" />
-            </div>
-
-            <div class="category-content-box">
-              <div class="category-content-flex">
-                <h3 class="category-item-title">Camisetas</h3>
-                <p class="category-item-amount">(35)</p>
-              </div>
-              <a href="#" class="category-btn">Mostrar tudo</a>
-            </div>
+          <div id="cupons-loading" class="loading">Carregando cupons</div>
+          <div id="cupons-content" style="display: none;">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Código</th>
+                  <th>Desconto</th>
+                  <th>Válido</th>
+                  <th>Usos</th>
+                  <th>Status</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tabela-cupons"></tbody>
+            </table>
           </div>
+        </div>
+      </div>
 
-          <div class="category-item">
-            <div class="category-img-box">
-              <img src="https://i.postimg.cc/W49mH700/jacket.png" alt="jacket" width="30" />
-            </div>
-
-            <div class="category-content-box">
-              <div class="category-content-flex">
-                <h3 class="category-item-title">Jaqueta</h3>
-                <p class="category-item-amount">(16)</p>
-              </div>
-              <a href="#" class="category-btn">Mostrar tudo</a>
-            </div>
+      <!-- ============================================================
+            MÓDULO: CONFIGURAÇÕES
+            ============================================================ -->
+      <div class="module" id="mod-configuracoes">
+        <div class="table-container">
+          <div class="table-header">
+            <h3>⚙️ Configurações do Sistema</h3>
           </div>
-
-          <div class="category-item">
-            <div class="category-img-box">
-              <img src="https://i.postimg.cc/zBVwZRk6/watch.png" alt="watch" width="30" />
-            </div>
-
-            <div class="category-content-box">
-              <div class="category-content-flex">
-                <h3 class="category-item-title">Assistir</h3>
-                <p class="category-item-amount">(27)</p>
+          <div style="padding: 20px 0;">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Nome da Loja</label>
+                <input type="text" value="Construmix" id="config-nome-loja">
               </div>
-              <a href="#" class="category-btn">Mostrar tudo</a>
-            </div>
-          </div>
-
-          <div class="category-item">
-            <div class="category-img-box">
-              <img src="https://i.postimg.cc/y8j0DTQ2/hat.png" alt="hats & caps" width="30" />
-            </div>
-
-            <div class="category-content-box">
-              <div class="category-content-flex">
-                <h3 class="category-item-title">Chapéus e bonés</h3>
-                <p class="category-item-amount">(39)</p>
+              <div class="form-group">
+                <label>Email de Contato</label>
+                <input type="email" value="contato@construmix.com" id="config-email-contato">
               </div>
-              <a href="#" class="category-btn">Mostrar tudo</a>
             </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Telefone</label>
+                <input type="text" value="(11) 99999-9999" id="config-telefone">
+              </div>
+              <div class="form-group">
+                <label>Moeda Padrão</label>
+                <select id="config-moeda">
+                  <option value="BRL">Real (R$)</option>
+                  <option value="USD">Dólar (US$)</option>
+                  <option value="EUR">Euro (€)</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Frete Padrão</label>
+                <input type="number" step="0.01" value="15.00" id="config-frete">
+              </div>
+              <div class="form-group">
+                <label>Status da Loja</label>
+                <select id="config-status-loja">
+                  <option value="ativa">Ativa</option>
+                  <option value="manutencao">Em Manutenção</option>
+                  <option value="offline">Offline</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label style="display: flex; align-items: center; gap: 10px;">
+                <span>Manter estoque negativo?</span>
+                <label class="switch">
+                  <input type="checkbox" checked id="config-estoque-negativo">
+                  <span class="slider"></span>
+                </label>
+              </label>
+            </div>
+            <button class="btn btn-primary" onclick="salvarConfiguracoes()">💾 Salvar Configurações</button>
           </div>
         </div>
       </div>
     </div>
-
-    <div class="product-container">
-      <div class="container">
-        <div class="sidebar has-scrollbar" data-mobile-menu>
-          <div class="sidebar-category">
-            <div class="sidebar-top">
-              <h2 class="sidebar-title">Categoria</h2>
-
-              <button class="sidebar-close-btn" data-mobile-menu-close-btn>
-                <ion-icon name="close-outline"></ion-icon>
-              </button>
-            </div>
-
-            <ul class="sidebar-menu-category-list">
-              <li class="sidebar-menu-category">
-                <button class="sidebar-accordion-menu" data-accordion-btn>
-                  <div class="menu-title-flex">
-                    <img src="https://i.postimg.cc/Xv9x15Q8/dress.png" alt="clothes" class="menu-title-img" width="20"
-                      height="20" />
-                    <p class="menu-title">Roupas</p>
-                  </div>
-
-                  <div>
-                    <ion-icon name="add-outline" class="add-icon"></ion-icon>
-                    <ion-icon name="remove-outline" class="remove-icon"></ion-icon>
-                  </div>
-                </button>
-
-                <ul class="sidebar-submenu-category-list" data-accordion>
-                  <li class="sidebar-submenu-category">
-                    <a href="#" class="sidebar-submenu-title">
-                      <p class="product-name">Camisa</p>
-                      <data value="300" class="stock" title="Estoque disponível">300</data>
-                    </a>
-                  </li>
-
-                  <li class="sidebar-submenu-category">
-                    <a href="#" class="sidebar-submenu-title">
-                      <p class="product-name">Shorts e jeans</p>
-                      <data value="60" class="stock" title="Estoque disponível">60</data>
-                    </a>
-                  </li>
-
-                  <li class="sidebar-submenu-category">
-                    <a href="#" class="sidebar-submenu-title">
-                      <p class="product-name">Jaqueta</p>
-                      <data value="50" class="stock" title="Estoque disponível">50</data>
-                    </a>
-                  </li>
-
-                  <li class="sidebar-submenu-category">
-                    <a href="#" class="sidebar-submenu-title">
-                      <p class="product-name">Vestido e vestido</p>
-                      <data value="87" class="stock" title="Estoque disponível">87</data>
-                    </a>
-                  </li>
-                </ul>
-              </li>
-
-              <li class="sidebar-menu-category">
-                <button class="sidebar-accordion-menu" data-accordion-btn>
-                  <div class="menu-title-flex">
-                    <img src="https://i.postimg.cc/d3RBQZhB/shoes.png" alt="footwear" class="menu-title-img" width="20"
-                      height="20" />
-                    <p class="menu-title">Calçados</p>
-                  </div>
-
-                  <div>
-                    <ion-icon name="add-outline" class="add-icon"></ion-icon>
-                    <ion-icon name="remove-outline" class="remove-icon"></ion-icon>
-                  </div>
-                </button>
-
-                <ul class="sidebar-submenu-category-list" data-accordion>
-                  <li class="sidebar-submenu-category">
-                    <a href="#" class="sidebar-submenu-title">
-                      <p class="product-name">Esportes</p>
-                      <data value="45" class="stock" title="Available Stock">45</data>
-                    </a>
-                  </li>
-
-                  <li class="sidebar-submenu-category">
-                    <a href="#" class="sidebar-submenu-title">
-                      <p class="product-name">Formal</p>
-                      <data value="75" class="stock" title="Available Stock">75</data>
-                    </a>
-                  </li>
-
-                  <li class="sidebar-submenu-category">
-                    <a href="#" class="sidebar-submenu-title">
-                      <p class="product-name">Casual</p>
-                      <data value="35" class="stock" title="Available Stock">35</data>
-                    </a>
-                  </li>
-
-                  <li class="sidebar-submenu-category">
-                    <a href="#" class="sidebar-submenu-title">
-                      <p class="product-name">Calçados de segurança</p>
-                      <data value="26" class="stock" title="Available Stock">26</data>
-                    </a>
-                  </li>
-                </ul>
-              </li>
-
-              <li class="sidebar-menu-category">
-                <button class="sidebar-accordion-menu" data-accordion-btn>
-                  <div class="menu-title-flex">
-                    <img src="https://i.postimg.cc/Y9HLrnY5/jewelry.png" alt="jewelyr" class="menu-title-img" width="20"
-                      height="20" />
-                    <p class="menu-title">Joia</p>
-                  </div>
-
-                  <div>
-                    <ion-icon name="add-outline" class="add-icon"></ion-icon>
-                    <ion-icon name="remove-outline" class="remove-icon"></ion-icon>
-                  </div>
-                </button>
-
-                <ul class="sidebar-submenu-category-list" data-accordion>
-                  <li class="sidebar-submenu-category">
-                    <a href="#" class="sidebar-submenu-title">
-                      <p class="product-name">Earrings</p>
-                      <data value="46" class="stock" title="Available Stock">46</data>
-                    </a>
-                  </li>
-
-                  <li class="sidebar-submenu-category">
-                    <a href="#" class="sidebar-submenu-title">
-                      <p class="product-name">Couple Rings</p>
-                      <data value="73" class="stock" title="Available Stock">73</data>
-                    </a>
-                  </li>
-
-                  <li class="sidebar-submenu-category">
-                    <a href="#" class="sidebar-submenu-title">
-                      <p class="product-name">Necklace</p>
-                      <data value="61" class="stock" title="Available Stock">61</data>
-                    </a>
-                  </li>
-                </ul>
-              </li>
-
-              <li class="sidebar-menu-category">
-                <button class="sidebar-accordion-menu" data-accordion-btn>
-                  <div class="menu-title-flex">
-                    <img src="https://i.postimg.cc/6q67R8Hz/perfume.png" alt="perfume" class="menu-title-img" width="20"
-                      height="20" />
-                    <p class="menu-title">Perfume</p>
-                  </div>
-
-                  <div>
-                    <ion-icon name="add-outline" class="add-icon"></ion-icon>
-                    <ion-icon name="remove-outline" class="remove-icon"></ion-icon>
-                  </div>
-                </button>
-
-                <ul class="sidebar-submenu-category-list" data-accordion>
-                  <li class="sidebar-submenu-category">
-                    <a href="#" class="sidebar-submenu-title">
-                      <p class="product-name">Clothes Perfume</p>
-                      <data value="12" class="stock" title="Available Stock">12 pcs</data>
-                    </a>
-                  </li>
-
-                  <li class="sidebar-submenu-category">
-                    <a href="#" class="sidebar-submenu-title">
-                      <p class="product-name">Deodorant</p>
-                      <data value="60" class="stock" title="Available Stock">60 pcs</data>
-                    </a>
-                  </li>
-
-                  <li class="sidebar-submenu-category">
-                    <a href="#" class="sidebar-submenu-title">
-                      <p class="product-name">Jacket</p>
-                      <data value="50" class="stock" title="Available Stock">50 pcs</data>
-                    </a>
-                  </li>
-
-                  <li class="sidebar-submenu-category">
-                    <a href="#" class="sidebar-submenu-title">
-                      <p class="product-name">Dress & Frock</p>
-                      <data value="87" class="stock" title="Available Stock">87 pcs</data>
-                    </a>
-                  </li>
-                </ul>
-              </li>
-
-              <li class="sidebar-menu-category">
-                <button class="sidebar-accordion-menu" data-accordion-btn>
-                  <div class="menu-title-flex">
-                    <img src="https://i.postimg.cc/dQnZF91f/cosmetics.png" alt="cosmetics" class="menu-title-img"
-                      width="20" height="20" />
-                    <p class="menu-title">Cosmetics</p>
-                  </div>
-
-                  <div>
-                    <ion-icon name="add-outline" class="add-icon"></ion-icon>
-                    <ion-icon name="remove-outline" class="remove-icon"></ion-icon>
-                  </div>
-                </button>
-
-                <ul class="sidebar-submenu-category-list" data-accordion>
-                  <li class="sidebar-submenu-category">
-                    <a href="#" class="sidebar-submenu-title">
-                      <p class="product-name">Shampoo</p>
-                      <data value="68" class="stock" title="Available Stock">68</data>
-                    </a>
-                  </li>
-
-                  <li class="sidebar-submenu-category">
-                    <a href="#" class="sidebar-submenu-title">
-                      <p class="product-name">Sunscreen</p>
-                      <data value="46" class="stock" title="Available Stock">46</data>
-                    </a>
-                  </li>
-
-                  <li class="sidebar-submenu-category">
-                    <a href="#" class="sidebar-submenu-title">
-                      <p class="product-name">Body Wash</p>
-                      <data value="79" class="stock" title="Available Stock">79</data>
-                    </a>
-                  </li>
-
-                  <li class="sidebar-submenu-category">
-                    <a href="#" class="sidebar-submenu-title">
-                      <p class="product-name">Makeup Kit</p>
-                      <data value="23" class="stock" title="Available Stock">23</data>
-                    </a>
-                  </li>
-                </ul>
-              </li>
-
-              <li class="sidebar-menu-category">
-                <button class="sidebar-accordion-menu" data-accordion-btn>
-                  <div class="menu-title-flex">
-                    <img src="https://i.postimg.cc/zBthxXZ7/glasses.png" alt="glasses" class="menu-title-img" width="20"
-                      height="20" />
-                    <p class="menu-title">Glasses</p>
-                  </div>
-
-                  <div>
-                    <ion-icon name="add-outline" class="add-icon"></ion-icon>
-                    <ion-icon name="remove-outline" class="remove-icon"></ion-icon>
-                  </div>
-                </button>
-
-                <ul class="sidebar-submenu-category-list" data-accordion>
-                  <li class="sidebar-submenu-category">
-                    <a href="#" class="sidebar-submenu-title">
-                      <p class="product-name">Sunglasses</p>
-                      <data value="50" class="stock" title="Available Stock">50</data>
-                    </a>
-                  </li>
-
-                  <li class="sidebar-submenu-category">
-                    <a href="#" class="sidebar-submenu-title">
-                      <p class="product-name">Lenses</p>
-                      <data value="48" class="stock" title="Available Stock">48</data>
-                    </a>
-                  </li>
-                </ul>
-              </li>
-
-              <li class="sidebar-menu-category">
-                <button class="sidebar-accordion-menu" data-accordion-btn>
-                  <div class="menu-title-flex">
-                    <img src="https://i.postimg.cc/5yt0yZ0R/bag.png" alt="bags" class="menu-title-img" width="20"
-                      height="20" />
-                    <p class="menu-title">Bags</p>
-                  </div>
-
-                  <div>
-                    <ion-icon name="add-outline" class="add-icon"></ion-icon>
-                    <ion-icon name="remove-outline" class="remove-icon"></ion-icon>
-                  </div>
-                </button>
-
-                <ul class="sidebar-submenu-category-list" data-accordion>
-                  <li class="sidebar-submenu-category">
-                    <a href="#" class="sidebar-submenu-title">
-                      <p class="product-name">Shopping Bag</p>
-                      <data value="62" class="stock" title="Available Stock">62</data>
-                    </a>
-                  </li>
-
-                  <li class="sidebar-submenu-category">
-                    <a href="#" class="sidebar-submenu-title">
-                      <p class="product-name">Gym Backpack</p>
-                      <data value="35" class="stock" title="Available Stock">35</data>
-                    </a>
-                  </li>
-
-                  <li class="sidebar-submenu-category">
-                    <a href="#" class="sidebar-submenu-title">
-                      <p class="product-name">Purse</p>
-                      <data value="80" class="stock" title="Available Stock">80</data>
-                    </a>
-                  </li>
-
-                  <li class="sidebar-submenu-category">
-                    <a href="#" class="sidebar-submenu-title">
-                      <p class="product-name">Wallet</p>
-                      <data value="75" class="stock" title="Available Stock">75</data>
-                    </a>
-                  </li>
-                </ul>
-              </li>
-            </ul>
-          </div>
-
-          <div class="product-showcase">
-            <h3 class="showcase-heading">Best Sellers</h3>
-
-            <div class="showcase-wrapper">
-              <div class="showcase-container">
-                <div class="showcase">
-                  <a href="#" class="showcase-img-box">
-                    <img src="https://i.postimg.cc/kGZn4GL2/1.jpg" alt="baby fabric shoes" class="showcase-img"
-                      width="75" height="75" />
-                  </a>
-
-                  <div class="showcase-content">
-                    <a href="#">
-                      <h4 class="showcase-title">Baby fabric shoes</h4>
-                    </a>
-
-                    <div class="showcase-rating">
-                      <ion-icon name="star"></ion-icon>
-                      <ion-icon name="star"></ion-icon>
-                      <ion-icon name="star"></ion-icon>
-                      <ion-icon name="star"></ion-icon>
-                      <ion-icon name="star"></ion-icon>
-                    </div>
-
-                    <div class="price-box">
-                      <del>$5.00</del>
-                      <p class="price">$4.00</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="showcase">
-                  <a href="#" class="showcase-img-box">
-                    <img src="https://i.postimg.cc/fySG8Kgb/2.jpg" alt="men's hoodies t-shirt" class="showcase-img"
-                      width="75" height="75" />
-                  </a>
-
-                  <div class="showcase-content">
-                    <a href="#">
-                      <h4 class="showcase-title">
-                        Men's hoodies t-shirt
-                      </h4>
-                    </a>
-
-                    <div class="showcase-rating">
-                      <ion-icon name="star"></ion-icon>
-                      <ion-icon name="star"></ion-icon>
-                      <ion-icon name="star"></ion-icon>
-                      <ion-icon name="star"></ion-icon>
-                      <ion-icon name="star"></ion-icon>
-                    </div>
-
-                    <div class="price-box">
-                      <del>$17.00</del>
-                      <p class="price">$7.00</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="showcase">
-                  <a href="#" class="showcase-img-box">
-                    <img src="https://i.postimg.cc/14xL2qLr/3.jpg" alt="girls t-shirt" class="showcase-img" width="75"
-                      height="75" />
-                  </a>
-
-                  <div class="showcase-content">
-                    <a href="#">
-                      <h4 class="showcase-title">Girls t-shirt</h4>
-                    </a>
-
-                    <div class="showcase-rating">
-                      <ion-icon name="star"></ion-icon>
-                      <ion-icon name="star"></ion-icon>
-                      <ion-icon name="star"></ion-icon>
-                      <ion-icon name="star"></ion-icon>
-                      <ion-icon name="star"></ion-icon>
-                    </div>
-
-                    <div class="price-box">
-                      <del>$5.00</del>
-                      <p class="price">$3.00</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="showcase">
-                  <a href="#" class="showcase-img-box">
-                    <img src="https://i.postimg.cc/y6wxsrKv/4.jpg" alt="woolen hat for men" class="showcase-img"
-                      width="75" height="75" />
-                  </a>
-
-                  <div class="showcase-content">
-                    <a href="#">
-                      <h4 class="showcase-title">Woolen hat for men</h4>
-                    </a>
-
-                    <div class="showcase-rating">
-                      <ion-icon name="star"></ion-icon>
-                      <ion-icon name="star"></ion-icon>
-                      <ion-icon name="star"></ion-icon>
-                      <ion-icon name="star"></ion-icon>
-                      <ion-icon name="star"></ion-icon>
-                    </div>
-
-                    <div class="price-box">
-                      <del>$15.00</del>
-                      <p class="price">$12.00</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="product-box">
-          <div class="product-minimal">
-            <div class="product-showcase">
-              <h2 class="title">New Arrivals</h2>
-
-              <div class="showcase-wrapper has-scrollbar">
-                <div class="showcase-container">
-                  <div class="showcase">
-                    <a href="#" class="showcase-img-box">
-                      <img src="https://i.postimg.cc/fyLNm09z/clothes-1.jpg" alt="relaxed short full sleeve t-shirt"
-                        class="showcase-img" width="70" />
-                    </a>
-
-                    <div class="showcase-content">
-                      <a href="#">
-                        <h4 class="showcase-title">
-                          Relaxed Short full sleeve t-shirt
-                        </h4>
-                      </a>
-                      <a href="#" class="showcase-category">Clothes</a>
-
-                      <div class="price-box">
-                        <p class="price">$45.00</p>
-                        <del>$12.00</del>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="showcase">
-                    <a href="#" class="showcase-img-box">
-                      <img src="https://i.postimg.cc/T3mXVxpD/clothes-2.jpg" alt="girls pink embro design top"
-                        class="showcase-img" width="70" />
-                    </a>
-
-                    <div class="showcase-content">
-                      <a href="#">
-                        <h4 class="showcase-title">
-                          Girls pink Embro design top
-                        </h4>
-                      </a>
-                      <a href="#" class="showcase-category">Clothes</a>
-
-                      <div class="price-box">
-                        <p class="price">$61.00</p>
-                        <del>$9.00</del>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="showcase">
-                    <a href="#" class="showcase-img-box">
-                      <img src="https://i.postimg.cc/DzgH6wF8/clothes-3.jpg" alt="black floral wrap midi skirt"
-                        class="showcase-img" width="70" />
-                    </a>
-
-                    <div class="showcase-content">
-                      <a href="#">
-                        <h4 class="showcase-title">
-                          Black Floral Wrap Midi Skirt
-                        </h4>
-                      </a>
-                      <a href="#" class="showcase-category">Clothes</a>
-
-                      <div class="price-box">
-                        <p class="price">$76.00</p>
-                        <del>$25.00</del>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="showcase">
-                    <a href="#" class="showcase-img-box">
-                      <img src="https://i.postimg.cc/02w43fPg/shirt-1.jpg" alt="pure garment dyed cotton shirt"
-                        class="showcase-img" width="70" />
-                    </a>
-
-                    <div class="showcase-content">
-                      <a href="#">
-                        <h4 class="showcase-title">
-                          Pure Garment Dyed Cotton Shirt
-                        </h4>
-                      </a>
-                      <a href="#" class="showcase-category">Men's Fashion</a>
-
-                      <div class="price-box">
-                        <p class="price">$68.00</p>
-                        <del>$31.00</del>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="showcase-container">
-                  <div class="showcase">
-                    <a href="#" class="showcase-img-box">
-                      <img src="https://i.postimg.cc/DZ3QSqRG/jacket-5.jpg" alt="relaxed short full sleeve t-shirt"
-                        class="showcase-img" width="70" />
-                    </a>
-
-                    <div class="showcase-content">
-                      <a href="#">
-                        <h4 class="showcase-title">
-                          Relaxed Short full sleeve t-shirt
-                        </h4>
-                      </a>
-                      <a href="#" class="showcase-category">Clothes</a>
-
-                      <div class="price-box">
-                        <p class="price">$45.00</p>
-                        <del>$12.00</del>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="showcase">
-                    <a href="#" class="showcase-img-box">
-                      <img src="https://i.postimg.cc/9fnSKNRh/jacket-1.jpg" alt="men yarn fleece full-zip jacket"
-                        class="showcase-img" width="70" />
-                    </a>
-
-                    <div class="showcase-content">
-                      <a href="#">
-                        <h4 class="showcase-title">
-                          Men Yarn Fleece Full-zip Jacket
-                        </h4>
-                      </a>
-                      <a href="#" class="showcase-category">Winter wear</a>
-
-                      <div class="price-box">
-                        <p class="price">$61.00</p>
-                        <del>$11.00</del>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="showcase">
-                    <a href="#" class="showcase-img-box">
-                      <img src="https://i.postimg.cc/jdybNKWJ/jacket-3.jpg" alt="mens winter leathers jackets"
-                        class="showcase-img" width="70" />
-                    </a>
-
-                    <div class="showcase-content">
-                      <a href="#">
-                        <h4 class="showcase-title">
-                          Mens Winter Leathers Jackets
-                        </h4>
-                      </a>
-                      <a href="#" class="showcase-category">Jackets</a>
-
-                      <div class="price-box">
-                        <p class="price">$50.00</p>
-                        <del>$25.00</del>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="showcase">
-                    <a href="#" class="showcase-img-box">
-                      <img src="https://i.postimg.cc/7Lmt7tMz/shorts-1.jpg" alt="better basics french terry sweatshorts"
-                        class="showcase-img" width="70" />
-                    </a>
-
-                    <div class="showcase-content">
-                      <a href="#">
-                        <h4 class="showcase-title">
-                          Better Basics French Terry Sweatshorts
-                        </h4>
-                      </a>
-                      <a href="#" class="showcase-category">Shorts</a>
-
-                      <div class="price-box">
-                        <p class="price">$20.00</p>
-                        <del>$10.00</del>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="product-showcase">
-              <h2 class="title">Trending</h2>
-
-              <div class="showcase-wrapper has-scrollbar">
-                <div class="showcase-container">
-                  <div class="showcase">
-                    <a href="#" class="showcase-img-box">
-                      <img src="https://i.postimg.cc/pLWhzrLm/sports-1.jpg" alt="running & trekking shoes - white"
-                        class="showcase-img" width="70" />
-                    </a>
-
-                    <div class="showcase-content">
-                      <a href="#">
-                        <h4 class="showcase-title">
-                          Running & Trekking Shoes - White
-                        </h4>
-                      </a>
-                      <a href="#" class="showcase-category">Sports</a>
-
-                      <div class="price-box">
-                        <p class="price">$49.00</p>
-                        <del>$15.00</del>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="showcase">
-                    <a href="#" class="showcase-img-box">
-                      <img src="https://i.postimg.cc/DfjFzzbv/sports-2.jpg" alt="trekking & running shoes - black"
-                        class="showcase-img" width="70" />
-                    </a>
-
-                    <div class="showcase-content">
-                      <a href="#">
-                        <h4 class="showcase-title">
-                          Trekking & Running Shoes - Black
-                        </h4>
-                      </a>
-                      <a href="#" class="showcase-category">Sports</a>
-
-                      <div class="price-box">
-                        <p class="price">$78.00</p>
-                        <del>$36.00</del>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="showcase">
-                    <a href="#" class="showcase-img-box">
-                      <img src="https://i.postimg.cc/qRPjQYmZ/party-wear-1.jpg" alt="womens party wear shoes"
-                        class="showcase-img" width="70" />
-                    </a>
-
-                    <div class="showcase-content">
-                      <a href="#">
-                        <h4 class="showcase-title">
-                          Womens Party Wear Shoes
-                        </h4>
-                      </a>
-                      <a href="#" class="showcase-category">Party Wear</a>
-
-                      <div class="price-box">
-                        <p class="price">$94.00</p>
-                        <del>$42.00</del>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="showcase">
-                    <a href="#" class="showcase-img-box">
-                      <img src="https://i.postimg.cc/cH1M4Wv3/sports-3.jpg" alt="sports claw women's shoes"
-                        class="showcase-img" width="70" />
-                    </a>
-
-                    <div class="showcase-content">
-                      <a href="#">
-                        <h4 class="showcase-title">
-                          Sports Claw Women's Shoes
-                        </h4>
-                      </a>
-                      <a href="#" class="showcase-category">Sports</a>
-
-                      <div class="price-box">
-                        <p class="price">$54.00</p>
-                        <del>$65.00</del>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="showcase-container">
-                  <div class="showcase">
-                    <a href="#" class="showcase-img-box">
-                      <img src="https://i.postimg.cc/JnczQTWc/sports-6.jpg" alt="air tekking shoes - white"
-                        class="showcase-img" width="70" />
-                    </a>
-
-                    <div class="showcase-content">
-                      <a href="#">
-                        <h4 class="showcase-title">
-                          Air Trekking Shoes - White
-                        </h4>
-                      </a>
-                      <a href="#" class="showcase-category">Sports</a>
-
-                      <div class="price-box">
-                        <p class="price">$52.00</p>
-                        <del>$55.00</del>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="showcase">
-                    <a href="#" class="showcase-img-box">
-                      <img src="https://i.postimg.cc/XvxVGrKQ/shoe-3.jpg" alt="Boot With Suede Detail"
-                        class="showcase-img" width="70" />
-                    </a>
-
-                    <div class="showcase-content">
-                      <a href="#">
-                        <h4 class="showcase-title">
-                          Boot With Suede Detail
-                        </h4>
-                      </a>
-                      <a href="#" class="showcase-category">Boots</a>
-
-                      <div class="price-box">
-                        <p class="price">$20.00</p>
-                        <del>$30.00</del>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="showcase">
-                    <a href="#" class="showcase-img-box">
-                      <img src="https://i.postimg.cc/JnMtkwB5/shoe-1.jpg" alt="men's leather formal wear shoes"
-                        class="showcase-img" width="70" />
-                    </a>
-
-                    <div class="showcase-content">
-                      <a href="#">
-                        <h4 class="showcase-title">
-                          Men's Leather Formal Wear Shoes
-                        </h4>
-                      </a>
-                      <a href="#" class="showcase-category">Formal</a>
-
-                      <div class="price-box">
-                        <p class="price">$56.00</p>
-                        <del>$78.00</del>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="showcase">
-                    <a href="#" class="showcase-img-box">
-                      <img src="https://i.postimg.cc/0yCHGD6R/shoe-2.jpg" alt="casual men's brown shoes"
-                        class="showcase-img" width="70" />
-                    </a>
-
-                    <div class="showcase-content">
-                      <a href="#">
-                        <h4 class="showcase-title">
-                          Casual Men's Brown Shoes
-                        </h4>
-                      </a>
-                      <a href="#" class="showcase-category">Casual</a>
-
-                      <div class="price-box">
-                        <p class="price">$50.00</p>
-                        <del>$55.00</del>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="product-showcase">
-              <h2 class="title">Top Rated</h2>
-
-              <div class="showcase-wrapper has-scrollbar">
-                <div class="showcase-container">
-                  <div class="showcase">
-                    <a href="#" class="showcase-img-box">
-                      <img src="https://i.postimg.cc/jq84QT45/watch-3.jpg" alt="pocket watch leather pouch"
-                        class="showcase-img" width="70" />
-                    </a>
-
-                    <div class="showcase-content">
-                      <a href="#">
-                        <h4 class="showcase-title">
-                          Pocket Watch Leather Pouch
-                        </h4>
-                      </a>
-                      <a href="#" class="showcase-category">Watches</a>
-
-                      <div class="price-box">
-                        <p class="price">$50.00</p>
-                        <del>$34.00</del>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="showcase">
-                    <a href="#" class="showcase-img-box">
-                      <img src="https://i.postimg.cc/MZmBYvv7/jewellery-3.jpg" alt="silver deer heart necklace"
-                        class="showcase-img" width="70" />
-                    </a>
-
-                    <div class="showcase-content">
-                      <a href="#">
-                        <h4 class="showcase-title">
-                          Silver Deer Heart Necklace
-                        </h4>
-                      </a>
-                      <a href="#" class="showcase-category">Jewellery</a>
-
-                      <div class="price-box">
-                        <p class="price">$84.00</p>
-                        <del>$30.00</del>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="showcase">
-                    <a href="#" class="showcase-img-box">
-                      <img src="https://i.postimg.cc/R0Kv9Jtq/perfume.jpg" alt="titan 100 ml womens perfume"
-                        class="showcase-img" width="70" />
-                    </a>
-
-                    <div class="showcase-content">
-                      <a href="#">
-                        <h4 class="showcase-title">
-                          Titan 100 Ml Womens Perfume
-                        </h4>
-                      </a>
-                      <a href="#" class="showcase-category">Perfume</a>
-
-                      <div class="price-box">
-                        <p class="price">$42.00</p>
-                        <del>$10.00</del>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="showcase">
-                    <a href="#" class="showcase-img-box">
-                      <img src="https://i.postimg.cc/jj4kzynp/belt.jpg" alt="men's leather reversible belt"
-                        class="showcase-img" width="70" />
-                    </a>
-
-                    <div class="showcase-content">
-                      <a href="#">
-                        <h4 class="showcase-title">
-                          Men's Leather Reversible Belt
-                        </h4>
-                      </a>
-                      <a href="#" class="showcase-category">Belt</a>
-
-                      <div class="price-box">
-                        <p class="price">$24.00</p>
-                        <del>$10.00</del>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="showcase-container">
-                  <div class="showcase">
-                    <a href="#" class="showcase-img-box">
-                      <img src="https://i.postimg.cc/T24Nqdh3/jewellery-2.jpg" alt="platinum zircon classic ring"
-                        class="showcase-img" width="70" />
-                    </a>
-
-                    <div class="showcase-content">
-                      <a href="#">
-                        <h4 class="showcase-title">
-                          Platinum Zircon Classic Ring
-                        </h4>
-                      </a>
-                      <a href="#" class="showcase-category">Jewellery</a>
-
-                      <div class="price-box">
-                        <p class="price">$62.00</p>
-                        <del>$65.00</del>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="showcase">
-                    <a href="#" class="showcase-img-box">
-                      <img src="https://i.postimg.cc/rsk1gH6g/watch-1.jpg" alt="smart watche vital plus"
-                        class="showcase-img" width="70" />
-                    </a>
-
-                    <div class="showcase-content">
-                      <a href="#">
-                        <h4 class="showcase-title">
-                          Smart Watch Vital Plus
-                        </h4>
-                      </a>
-                      <a href="#" class="showcase-category">Watches</a>
-
-                      <div class="price-box">
-                        <p class="price">$56.00</p>
-                        <del>$78.00</del>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="showcase">
-                    <a href="#" class="showcase-img-box">
-                      <img src="https://i.postimg.cc/wjGDnM81/shampoo.jpg" alt="shampoo conditioner packs"
-                        class="showcase-img" width="70" />
-                    </a>
-
-                    <div class="showcase-content">
-                      <a href="#">
-                        <h4 class="showcase-title">
-                          Shampoo Conditioner Packs
-                        </h4>
-                      </a>
-                      <a href="#" class="showcase-category">Cosmetics</a>
-
-                      <div class="price-box">
-                        <p class="price">$20.00</p>
-                        <del>$30.00</del>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="showcase">
-                    <a href="#" class="showcase-img-box">
-                      <img src="https://i.postimg.cc/6qd3mpCv/jewellery-1.jpg" alt="rose gold peacock earrings"
-                        class="showcase-img" width="70" />
-                    </a>
-
-                    <div class="showcase-content">
-                      <a href="#">
-                        <h4 class="showcase-title">
-                          Rose Gold Peacock Earrings
-                        </h4>
-                      </a>
-                      <a href="#" class="showcase-category">Jewellery</a>
-
-                      <div class="price-box">
-                        <p class="price">$20.00</p>
-                        <del>$30.00</del>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="product-featured">
-            <h2 class="title">Deal of the day</h2>
-
-            <div class="showcase-wrapper has-scrollbar">
-              <div class="showcase-container">
-                <div class="showcase">
-                  <div class="showcase-banner">
-                    <img src="https://i.postimg.cc/wjGDnM81/shampoo.jpg" alt="shampoo, conditioner & facewash packs"
-                      class="showcase-img" />
-                  </div>
-
-                  <div class="showcase-content">
-                    <div class="showcase-rating">
-                      <ion-icon name="star"></ion-icon>
-                      <ion-icon name="star"></ion-icon>
-                      <ion-icon name="star"></ion-icon>
-                      <ion-icon name="star-outline"></ion-icon>
-                      <ion-icon name="star-outline"></ion-icon>
-                    </div>
-
-                    <a href="#">
-                      <h3 class="showcase-title">
-                        SHAMPOO, CONDITIONER & FACEWASH PACKS
-                      </h3>
-                    </a>
-                    <p class="showcase-desc">
-                      Old Spice includes a variety of products designed for
-                      men's grooming needs, such as deodorants and
-                      antiperspirants, body washes, shaving creams,
-                      aftershaves and hair and beard care
-                    </p>
-
-                    <div class="price-box">
-                      <p class="price">$150.00</p>
-                      <del>$200.00</del>
-                    </div>
-
-                    <button class="add-cart-btn">Add to Cart</button>
-
-                    <div class="showcase-status">
-                      <div class="wrapper">
-                        <p>Already Sold: <b>20</b></p>
-                        <p>Available: <b>40</b></p>
-                      </div>
-
-                      <div class="showcase-status-bar"></div>
-                    </div>
-
-                    <div class="countdown-box">
-                      <p class="countdown-desc">Hurry up! Offer ends in:</p>
-
-                      <div class="countdown">
-                        <div class="countdown-content">
-                          <p class="display-number">360</p>
-                          <p class="display-text">Days</p>
-                        </div>
-
-                        <div class="countdown-content">
-                          <p class="display-number">24</p>
-                          <p class="display-text">Hours</p>
-                        </div>
-
-                        <div class="countdown-content">
-                          <p class="display-number">59</p>
-                          <p class="display-text">Min</p>
-                        </div>
-
-                        <div class="countdown-content">
-                          <p class="display-number">00</p>
-                          <p class="display-text">Sec</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="showcase-container">
-                <div class="showcase">
-                  <div class="showcase-banner">
-                    <img src="https://i.postimg.cc/6qd3mpCv/jewellery-1.jpg" alt="Rose Gold diamonds Earring"
-                      class="showcase-img" />
-                  </div>
-
-                  <div class="showcase-content">
-                    <div class="showcase-rating">
-                      <ion-icon name="star"></ion-icon>
-                      <ion-icon name="star"></ion-icon>
-                      <ion-icon name="star"></ion-icon>
-                      <ion-icon name="star-outline"></ion-icon>
-                      <ion-icon name="star-outline"></ion-icon>
-                    </div>
-
-                    <a href="#">
-                      <h3 class="showcase-title">
-                        ROSE GOLD DIAMOND EARRINGS
-                      </h3>
-                    </a>
-                    <p class="showcase-desc">
-                      It's a stylish piece of jewelry that combines the warm
-                      tones of rose gold with the brilliance of diamonds.
-                      Enjoy a a luxurious and elegant accessory, perfect for
-                      enhancing any outfit while adding a touch of
-                      sophistication
-                    </p>
-
-                    <div class="price-box">
-                      <p class="price">$1990.00</p>
-                      <del>$2000.00</del>
-                    </div>
-
-                    <button class="add-cart-btn">Add to Cart</button>
-
-                    <div class="showcase-status">
-                      <div class="wrapper">
-                        <p>Already Sold: <b>15</b></p>
-                        <p>Available: <b>40</b></p>
-                      </div>
-
-                      <div class="showcase-status-bar"></div>
-                    </div>
-
-                    <div class="countdown-box">
-                      <p class="countdown-desc">Hurry up! Offer ends in:</p>
-
-                      <div class="countdown">
-                        <div class="countdown-content">
-                          <p class="display-number">360</p>
-                          <p class="display-text">Days</p>
-                        </div>
-
-                        <div class="countdown-content">
-                          <p class="display-number">24</p>
-                          <p class="display-text">Hours</p>
-                        </div>
-
-                        <div class="countdown-content">
-                          <p class="display-number">59</p>
-                          <p class="display-text">Min</p>
-                        </div>
-
-                        <div class="countdown-content">
-                          <p class="display-number">00</p>
-                          <p class="display-text">Sec</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="product-main">
-            <h2 class="title">New Products</h2>
-
-            <div class="product-grid">
-              <div class="showcase">
-                <div class="showcase-banner">
-                  <img src="https://i.postimg.cc/jdybNKWJ/jacket-3.jpg" alt="Mens Winter Leathers Jackets"
-                    class="product-img default" width="300" />
-                  <img src="https://i.postimg.cc/pr9cj4HT/jacket-4.jpg" alt="Mens Winter Leathers Jackets"
-                    class="product-img hover" width="300" />
-
-                  <p class="showcase-badge">15%</p>
-
-                  <div class="showcase-actions">
-                    <button class="btn-action">
-                      <ion-icon name="heart-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="eye-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="repeat-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="bag-add-outline"></ion-icon>
-                    </button>
-                  </div>
-                </div>
-
-                <div class="showcase-content">
-                  <a href="#" class="showcase-category">Jacket</a>
-                  <a href="#">
-                    <h3 class="showcase-title">
-                      Mens Winter Leathers Jackets
-                    </h3>
-                  </a>
-
-                  <div class="showcase-rating">
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star-outline"></ion-icon>
-                    <ion-icon name="star-outline"></ion-icon>
-                  </div>
-
-                  <div class="price-box">
-                    <p class="price">48.00</p>
-                    <del>$75.00</del>
-                  </div>
-                </div>
-              </div>
-
-              <div class="showcase">
-                <div class="showcase-banner">
-                  <img src="https://i.postimg.cc/02w43fPg/shirt-1.jpg" alt="Pure Garment Dyed Cotton Shirt"
-                    class="product-img default" width="300" />
-                  <img src="https://i.postimg.cc/dVbq6JMK/shirt-2.jpg" alt="Pure Garment Dyed Cotton Shirt"
-                    class="product-img hover" width="300" />
-
-                  <p class="showcase-badge angle black">Sale</p>
-
-                  <div class="showcase-actions">
-                    <button class="btn-action">
-                      <ion-icon name="heart-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="eye-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="repeat-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="bag-add-outline"></ion-icon>
-                    </button>
-                  </div>
-                </div>
-
-                <div class="showcase-content">
-                  <a href="#" class="showcase-category">SHIRT</a>
-                  <a href="#">
-                    <h3 class="showcase-title">
-                      Pure Garment Dyed Cotton Shirt
-                    </h3>
-                  </a>
-
-                  <div class="showcase-rating">
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star-outline"></ion-icon>
-                    <ion-icon name="star-outline"></ion-icon>
-                  </div>
-
-                  <div class="price-box">
-                    <p class="price">45.00</p>
-                    <del>$56.00</del>
-                  </div>
-                </div>
-              </div>
-
-              <div class="showcase">
-                <div class="showcase-banner">
-                  <img src="https://i.postimg.cc/DZ3QSqRG/jacket-5.jpg" alt="MEN Yarn Fleece Full-Zip Jacket"
-                    class="product-img default" width="300" />
-                  <img src="https://i.postimg.cc/RFnYQp6s/jacket-6.jpg" alt="MEN Yarn Fleece Full-Zip Jacket"
-                    class="product-img hover" width="300" />
-
-                  <!-- <p class="showcase-badge angle black">Sale</p> -->
-
-                  <div class="showcase-actions">
-                    <button class="btn-action">
-                      <ion-icon name="heart-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="eye-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="repeat-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="bag-add-outline"></ion-icon>
-                    </button>
-                  </div>
-                </div>
-
-                <div class="showcase-content">
-                  <a href="#" class="showcase-category">JACKET</a>
-                  <a href="#">
-                    <h3 class="showcase-title">
-                      MEN Yarn Fleece Full-Zip Jacket
-                    </h3>
-                  </a>
-
-                  <div class="showcase-rating">
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star-outline"></ion-icon>
-                    <ion-icon name="star-outline"></ion-icon>
-                  </div>
-
-                  <div class="price-box">
-                    <p class="price">58.00</p>
-                    <del>$65.00</del>
-                  </div>
-                </div>
-              </div>
-
-              <div class="showcase">
-                <div class="showcase-banner">
-                  <img src="https://i.postimg.cc/DzgH6wF8/clothes-3.jpg" alt="Black Floral Wrap Midi Skirt"
-                    class="product-img default" width="300" />
-                  <img src="https://i.postimg.cc/g01SJySv/clothes-4.jpg" alt="Black Floral Wrap Midi Skirt"
-                    class="product-img hover" width="300" />
-
-                  <p class="showcase-badge angle pink">NEW</p>
-
-                  <div class="showcase-actions">
-                    <button class="btn-action">
-                      <ion-icon name="heart-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="eye-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="repeat-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="bag-add-outline"></ion-icon>
-                    </button>
-                  </div>
-                </div>
-
-                <div class="showcase-content">
-                  <a href="#" class="showcase-category">SKIRT</a>
-                  <a href="#">
-                    <h3 class="showcase-title">
-                      Black Floral Wrap Midi Skirt
-                    </h3>
-                  </a>
-
-                  <div class="showcase-rating">
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star-outline"></ion-icon>
-                    <ion-icon name="star-outline"></ion-icon>
-                  </div>
-
-                  <div class="price-box">
-                    <p class="price">25.00</p>
-                    <del>$35.00</del>
-                  </div>
-                </div>
-              </div>
-
-              <div class="showcase">
-                <div class="showcase-banner">
-                  <img src="https://i.postimg.cc/0yCHGD6R/shoe-2.jpg" alt="Casual Men's Brown shoes"
-                    class="product-img default" width="300" />
-                  <img src="https://i.postimg.cc/TY29THdz/shoe-2-1.jpg" alt="Casual Men's Brown shoes"
-                    class="product-img hover" width="300" />
-
-                  <!-- <p class="showcase-badge angle black">Sale</p> -->
-
-                  <div class="showcase-actions">
-                    <button class="btn-action">
-                      <ion-icon name="heart-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="eye-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="repeat-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="bag-add-outline"></ion-icon>
-                    </button>
-                  </div>
-                </div>
-
-                <div class="showcase-content">
-                  <a href="#" class="showcase-category">CASUAL</a>
-                  <a href="#">
-                    <h3 class="showcase-title">
-                      Casual Men's Brown shoes
-                    </h3>
-                  </a>
-
-                  <div class="showcase-rating">
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star-outline"></ion-icon>
-                    <ion-icon name="star-outline"></ion-icon>
-                  </div>
-
-                  <div class="price-box">
-                    <p class="price">99.00</p>
-                    <del>$105.00</del>
-                  </div>
-                </div>
-              </div>
-
-              <div class="showcase">
-                <div class="showcase-banner">
-                  <img src="https://i.postimg.cc/jq84QT45/watch-3.jpg" alt="Pocket Watch Leather Pouch"
-                    class="product-img default" width="300" />
-                  <img src="https://i.postimg.cc/tRk3vt32/watch-4.jpg" alt="Pocket Watch Leather Pouch"
-                    class="product-img hover" width="300" />
-
-                  <p class="showcase-badge angle black">Sale</p>
-
-                  <div class="showcase-actions">
-                    <button class="btn-action">
-                      <ion-icon name="heart-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="eye-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="repeat-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="bag-add-outline"></ion-icon>
-                    </button>
-                  </div>
-                </div>
-
-                <div class="showcase-content">
-                  <a href="#" class="showcase-category">WATCHES</a>
-                  <a href="#">
-                    <h3 class="showcase-title">
-                      Pocket Watch Leather Pouch
-                    </h3>
-                  </a>
-
-                  <div class="showcase-rating">
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star-outline"></ion-icon>
-                    <ion-icon name="star-outline"></ion-icon>
-                  </div>
-
-                  <div class="price-box">
-                    <p class="price">150.00</p>
-                    <del>$170.00</del>
-                  </div>
-                </div>
-              </div>
-
-              <div class="showcase">
-                <div class="showcase-banner">
-                  <img src="https://i.postimg.cc/rsk1gH6g/watch-1.jpg" alt="Smart watche Vital Plus"
-                    class="product-img default" width="300" />
-                  <img src="https://i.postimg.cc/hjgmpfhk/watch-2.jpg" alt="Smart watche Vital Plus"
-                    class="product-img hover" width="300" />
-
-                  <!-- <p class="showcase-badge angle black">Sale</p> -->
-
-                  <div class="showcase-actions">
-                    <button class="btn-action">
-                      <ion-icon name="heart-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="eye-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="repeat-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="bag-add-outline"></ion-icon>
-                    </button>
-                  </div>
-                </div>
-
-                <div class="showcase-content">
-                  <a href="#" class="showcase-category">WATCHES</a>
-                  <a href="#">
-                    <h3 class="showcase-title">
-                      Smart watche Vital Plus
-                    </h3>
-                  </a>
-
-                  <div class="showcase-rating">
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star-outline"></ion-icon>
-                    <ion-icon name="star-outline"></ion-icon>
-                  </div>
-
-                  <div class="price-box">
-                    <p class="price">100.00</p>
-                    <del>$120.00</del>
-                  </div>
-                </div>
-              </div>
-
-              <div class="showcase">
-                <div class="showcase-banner">
-                  <img src="https://i.postimg.cc/qRPjQYmZ/party-wear-1.jpg" alt="Womens Party Wear Shoes"
-                    class="product-img default" width="300" />
-                  <img src="https://i.postimg.cc/FKhF6cgV/party-wear-2.jpg" alt="Womens Party Wear Shoes"
-                    class="product-img hover" width="300" />
-
-                  <p class="showcase-badge angle black">Sale</p>
-
-                  <div class="showcase-actions">
-                    <button class="btn-action">
-                      <ion-icon name="heart-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="eye-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="repeat-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="bag-add-outline"></ion-icon>
-                    </button>
-                  </div>
-                </div>
-
-                <div class="showcase-content">
-                  <a href="#" class="showcase-category">PARTY WEAR</a>
-                  <a href="#">
-                    <h3 class="showcase-title">
-                      Womens Party Wear Shoes
-                    </h3>
-                  </a>
-
-                  <div class="showcase-rating">
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star-outline"></ion-icon>
-                    <ion-icon name="star-outline"></ion-icon>
-                  </div>
-
-                  <div class="price-box">
-                    <p class="price">25.00</p>
-                    <del>$30.00</del>
-                  </div>
-                </div>
-              </div>
-
-              <div class="showcase">
-                <div class="showcase-banner">
-                  <img src="https://i.postimg.cc/9fnSKNRh/jacket-1.jpg" alt="Mens Winter Leathers Jackets"
-                    class="product-img default" width="300" />
-                  <img src="https://i.postimg.cc/T36WRKJp/jacket-2.jpg" alt="Mens Winter Leathers Jackets"
-                    class="product-img hover" width="300" />
-
-                  <!-- <p class="showcase-badge angle black">Sale</p> -->
-
-                  <div class="showcase-actions">
-                    <button class="btn-action">
-                      <ion-icon name="heart-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="eye-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="repeat-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="bag-add-outline"></ion-icon>
-                    </button>
-                  </div>
-                </div>
-
-                <div class="showcase-content">
-                  <a href="#" class="showcase-category">JACKET</a>
-                  <a href="#">
-                    <h3 class="showcase-title">
-                      Mens Winter Leathers Jackets
-                    </h3>
-                  </a>
-
-                  <div class="showcase-rating">
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star-outline"></ion-icon>
-                    <ion-icon name="star-outline"></ion-icon>
-                  </div>
-
-                  <div class="price-box">
-                    <p class="price">32.00</p>
-                    <del>$45.00</del>
-                  </div>
-                </div>
-              </div>
-
-              <div class="showcase">
-                <div class="showcase-banner">
-                  <img src="https://i.postimg.cc/DfjFzzbv/sports-2.jpg" alt="Trekking & Running Shoes - black"
-                    class="product-img default" width="300" />
-                  <img src="https://i.postimg.cc/BbFX338T/sports-4.jpg" alt="Trekking & Running Shoes - black"
-                    class="product-img hover" width="300" />
-
-                  <p class="showcase-badge angle black">Sale</p>
-
-                  <div class="showcase-actions">
-                    <button class="btn-action">
-                      <ion-icon name="heart-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="eye-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="repeat-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="bag-add-outline"></ion-icon>
-                    </button>
-                  </div>
-                </div>
-
-                <div class="showcase-content">
-                  <a href="#" class="showcase-category">SPORTS</a>
-                  <a href="#">
-                    <h3 class="showcase-title">
-                      Trekking & Running Shoes - black
-                    </h3>
-                  </a>
-
-                  <div class="showcase-rating">
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star-outline"></ion-icon>
-                    <ion-icon name="star-outline"></ion-icon>
-                  </div>
-
-                  <div class="price-box">
-                    <p class="price">58.00</p>
-                    <del>$64.00</del>
-                  </div>
-                </div>
-              </div>
-
-              <div class="showcase">
-                <div class="showcase-banner">
-                  <img src="https://i.postimg.cc/JnMtkwB5/shoe-1.jpg" alt="Men's Leather Formal Wear shoes"
-                    class="product-img default" width="300" />
-                  <img src="https://i.postimg.cc/BnLwGwNq/shoe-1-1.jpg" alt="Men's Leather Formal Wear shoes"
-                    class="product-img hover" width="300" />
-
-                  <!-- <p class="showcase-badge angle black">Sale</p> -->
-
-                  <div class="showcase-actions">
-                    <button class="btn-action">
-                      <ion-icon name="heart-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="eye-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="repeat-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="bag-add-outline"></ion-icon>
-                    </button>
-                  </div>
-                </div>
-
-                <div class="showcase-content">
-                  <a href="#" class="showcase-category">FORMAL</a>
-                  <a href="#">
-                    <h3 class="showcase-title">
-                      Men's Leather Formal Wear shoes
-                    </h3>
-                  </a>
-
-                  <div class="showcase-rating">
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star-outline"></ion-icon>
-                    <ion-icon name="star-outline"></ion-icon>
-                  </div>
-
-                  <div class="price-box">
-                    <p class="price">50.00</p>
-                    <del>$65.00</del>
-                  </div>
-                </div>
-              </div>
-
-              <div class="showcase">
-                <div class="showcase-banner">
-                  <img src="https://i.postimg.cc/7Lmt7tMz/shorts-1.jpg" alt="Better Basics French Terry Sweatshorts"
-                    class="product-img default" width="300" />
-                  <img src="https://i.postimg.cc/cLBTZywG/shorts-2.jpg" alt="Better Basics French Terry Sweatshorts"
-                    class="product-img hover" width="300" />
-
-                  <p class="showcase-badge angle black">Sale</p>
-
-                  <div class="showcase-actions">
-                    <button class="btn-action">
-                      <ion-icon name="heart-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="eye-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="repeat-outline"></ion-icon>
-                    </button>
-                    <button class="btn-action">
-                      <ion-icon name="bag-add-outline"></ion-icon>
-                    </button>
-                  </div>
-                </div>
-
-                <div class="showcase-content">
-                  <a href="#" class="showcase-category">SHORTS</a>
-                  <a href="#">
-                    <h3 class="showcase-title">
-                      Better Basics French Terry Sweatshorts
-                    </h3>
-                  </a>
-
-                  <div class="showcase-rating">
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star"></ion-icon>
-                    <ion-icon name="star-outline"></ion-icon>
-                    <ion-icon name="star-outline"></ion-icon>
-                  </div>
-
-                  <div class="price-box">
-                    <p class="price">78.00</p>
-                    <del>$85.00</del>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+  </div>
+
+  <!-- ============================================================
+    MODAL PRODUTO
+    ============================================================ -->
+  <div class="modal-overlay" id="modal-produto">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-titulo">Novo Produto</h3>
+        <button class="modal-close" onclick="fecharModal()">✕</button>
       </div>
-    </div>
+      <form id="form-produto" onsubmit="salvarProduto(); return false;">
+        <input type="hidden" id="produto-id">
 
-    <div>
-      <div class="container">
-        <div class="testimonials-box">
-          <div class="testimonial">
-            <h2 class="title">Testimonial</h2>
+        <div class="form-group">
+          <label>Nome do Produto *</label>
+          <input type="text" id="produto-nome" required placeholder="Ex: Martelo Unha 29mm">
+        </div>
 
-            <div class="testimonial-card">
-              <img src="https://i.postimg.cc/g27jxrvV/testimonial-1.jpg" alt="alan doe" class="testimonial-banner"
-                width="80" height="80" />
+        <div class="form-group">
+          <label>Descrição</label>
+          <textarea id="produto-descricao" rows="3" placeholder="Descrição detalhada do produto"></textarea>
+        </div>
 
-              <p class="testimonial-name">Alan Doe</p>
-
-              <p class="testimonial-title">CEO & Founder Invision</p>
-
-              <img src="https://i.postimg.cc/QCSxhM8W/quotes.png" alt="quotation" class="quotation-img" width="26" />
-
-              <p class="testimonial-desc">
-                We put our trust in Anon and they delivered, making sure our
-                needs were met
-              </p>
-            </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>SKU (Código)</label>
+            <input type="text" id="produto-sku" placeholder="Ex: FER-001">
           </div>
-
-          <div class="cta-container">
-            <img src="https://i.postimg.cc/G2xsTd3b/cta-banner.jpg" alt="summer collection" class="cta-banner" />
-
-            <a href="#" class="cta-content">
-              <p class="discount">25% Discount</p>
-              <h2 class="cta-title">Summer Collection</h2>
-              <p class="cta-text">Starting @ $10</p>
-
-              <button class="cta-btn">Shop Now</button>
-            </a>
-          </div>
-
-          <div class="service">
-            <h2 class="title">Our Services</h2>
-
-            <div class="service-container">
-              <a href="#" class="service-item">
-                <div class="service-icon">
-                  <ion-icon name="boat-outline"></ion-icon>
-                </div>
-
-                <div class="service-content">
-                  <h3 class="service-title">Worldwide Delivery</h3>
-                  <p class="service-desc">For Order Over $100</p>
-                </div>
-              </a>
-
-              <a href="#" class="service-item">
-                <div class="service-icon">
-                  <ion-icon name="rocket-outline"></ion-icon>
-                </div>
-
-                <div class="service-content">
-                  <h3 class="service-title">Next Day Delivery</h3>
-                  <p class="service-desc">UK Orders Only</p>
-                </div>
-              </a>
-
-              <a href="#" class="service-item">
-                <div class="service-icon">
-                  <ion-icon name="call-outline"></ion-icon>
-                </div>
-
-                <div class="service-content">
-                  <h3 class="service-title">Best Online Support</h3>
-                  <p class="service-desc">Hours: 8AM - 11PM</p>
-                </div>
-              </a>
-
-              <a href="#" class="service-item">
-                <div class="service-icon">
-                  <ion-icon name="arrow-undo-outline"></ion-icon>
-                </div>
-
-                <div class="service-content">
-                  <h3 class="service-title">Return Policy</h3>
-                  <p class="service-desc">Easy & Free Return</p>
-                </div>
-              </a>
-
-              <a href="#" class="service-item">
-                <div class="service-icon">
-                  <ion-icon name="ticket-outline"></ion-icon>
-                </div>
-
-                <div class="service-content">
-                  <h3 class="service-title">30% Money Back</h3>
-                  <p class="service-desc">For Order Over $100</p>
-                </div>
-              </a>
-            </div>
+          <div class="form-group">
+            <label>Preço de Venda *</label>
+            <input type="number" step="0.01" id="produto-preco" required placeholder="0.00">
           </div>
         </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Estoque Atual</label>
+            <input type="number" id="produto-estoque" value="0">
+          </div>
+          <div class="form-group">
+            <label>Status</label>
+            <select id="produto-status">
+              <option value="ativo">Ativo</option>
+              <option value="inativo">Inativo</option>
+              <option value="rascunho">Rascunho</option>
+              <option value="esgotado">Esgotado</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label style="display: flex; align-items: center; gap: 10px;">
+              <span>Produto em Destaque</span>
+              <label class="switch">
+                <input type="checkbox" id="produto-destaque">
+                <span class="slider"></span>
+              </label>
+            </label>
+          </div>
+          <div class="form-group">
+            <label style="display: flex; align-items: center; gap: 10px;">
+              <span>Produto Novo</span>
+              <label class="switch">
+                <input type="checkbox" id="produto-novo">
+                <span class="slider"></span>
+              </label>
+            </label>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-outline" onclick="fecharModal()">Cancelar</button>
+          <button type="submit" class="btn btn-accent">💾 Salvar Produto</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================
+    MODAL CATEGORIA
+    ============================================================ -->
+  <div class="modal-overlay" id="modal-categoria">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Nova Categoria</h3>
+        <button class="modal-close" onclick="fecharModalCategoria()">✕</button>
       </div>
-    </div>
-
-    <div class="blog">
-      <div class="container">
-        <div class="blog-container has-scrollbar">
-          <div class="blog-card">
-            <a href="#">
-              <img src="https://i.postimg.cc/2886v00v/blog-1.jpg"
-                alt="Clothes Retail KPIs 2023 Guide for Clothes Executives" class="blog-banner" width="300" />
-            </a>
-
-            <div class="blog-content">
-              <a href="#" class="blog-category">Fashion</a>
-              <a href="#">
-                <h3 class="blog-title">
-                  Clothes Retail KPIs 2023 Guide for Clothes Executives
-                </h3>
-              </a>
-              <p class="blog-meta">
-                By <cite>Mr Admin</cite> /
-                <time datetime="2024-04-06">Apr 06, 2024</time>
-              </p>
-            </div>
-          </div>
-
-          <div class="blog-card">
-            <a href="#">
-              <img src="https://i.postimg.cc/cJWPgbmG/blog-2.jpg"
-                alt="Curbside fashion Trends: How to Win the Pickup Battle" class="blog-banner" width="300" />
-            </a>
-
-            <div class="blog-content">
-              <a href="#" class="blog-category">Clothes</a>
-              <a href="#">
-                <h3 class="blog-title">
-                  Curbside fashion Trends: How to Win the Pickup Battle
-                </h3>
-              </a>
-              <p class="blog-meta">
-                By <cite>Mr Robin</cite> /
-                <time datetime="2024-01-18">Jan 18, 2024</time>
-              </p>
-            </div>
-          </div>
-
-          <div class="blog-card">
-            <a href="#">
-              <img src="https://i.postimg.cc/BQkj0xCK/blog-3.jpg"
-                alt="EBT vendors: Claim Your Share of SNAP Online Revenue" class="blog-banner" width="300" />
-            </a>
-
-            <div class="blog-content">
-              <a href="#" class="blog-category">Shoes</a>
-              <a href="#">
-                <h3 class="blog-title">
-                  EBT vendors: Claim Your Share of SNAP Online Revenue
-                </h3>
-              </a>
-              <p class="blog-meta">
-                By <cite>Mr Selsa</cite> /
-                <time datetime="2023-02-23">Feb 23, 2023</time>
-              </p>
-            </div>
-          </div>
-
-          <div class="blog-card">
-            <a href="#">
-              <img src="https://i.postimg.cc/43Jskdjc/blog-4.jpg"
-                alt="Curbside fashion Trends: How to Win the Pickup Battle" class="blog-banner" width="300" />
-            </a>
-
-            <div class="blog-content">
-              <a href="#" class="blog-category">Electronics</a>
-              <a href="#">
-                <h3 class="blog-title">
-                  Curbside fashion Trends: How to Win the Pickup Battle
-                </h3>
-              </a>
-              <p class="blog-meta">
-                By <cite>Mr Pawar</cite> /
-                <time datetime="2023-02-02">Feb 02, 2023</time>
-              </p>
-            </div>
-          </div>
+      <form id="form-categoria" onsubmit="salvarCategoria(); return false;">
+        <div class="form-group">
+          <label>Nome da Categoria *</label>
+          <input type="text" id="categoria-nome" required placeholder="Ex: Ferramentas Elétricas">
         </div>
+        <div class="form-group">
+          <label>Descrição</label>
+          <textarea id="categoria-descricao" rows="2" placeholder="Descrição da categoria"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Ícone (Emoji)</label>
+          <input type="text" id="categoria-icone" placeholder="Ex: ⚡">
+        </div>
+        <div class="form-group">
+          <label>Slug (URL Amigável)</label>
+          <input type="text" id="categoria-slug" placeholder="Ex: ferramentas-eletricas">
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-outline" onclick="fecharModalCategoria()">Cancelar</button>
+          <button type="submit" class="btn btn-accent">💾 Salvar Categoria</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================
+    MODAL CUPOM
+    ============================================================ -->
+  <div class="modal-overlay" id="modal-cupom">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Novo Cupom</h3>
+        <button class="modal-close" onclick="fecharModalCupom()">✕</button>
       </div>
+      <form id="form-cupom" onsubmit="salvarCupom(); return false;">
+        <div class="form-group">
+          <label>Código do Cupom *</label>
+          <input type="text" id="cupom-codigo" required placeholder="Ex: DESCONTO10">
+        </div>
+        <div class="form-group">
+          <label>Descrição</label>
+          <input type="text" id="cupom-descricao" placeholder="Ex: 10% de desconto em toda loja">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Tipo de Desconto</label>
+            <select id="cupom-tipo">
+              <option value="percentual">Percentual (%)</option>
+              <option value="fixo">Valor Fixo (R$)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Valor do Desconto *</label>
+            <input type="number" step="0.01" id="cupom-valor" required placeholder="0.00">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Data Início</label>
+            <input type="date" id="cupom-inicio">
+          </div>
+          <div class="form-group">
+            <label>Data Fim</label>
+            <input type="date" id="cupom-fim">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Limite de Usos</label>
+          <input type="number" id="cupom-usos" value="1" placeholder="Número máximo de usos">
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-outline" onclick="fecharModalCupom()">Cancelar</button>
+          <button type="submit" class="btn btn-accent">💾 Salvar Cupom</button>
+        </div>
+      </form>
     </div>
-  </main>
+  </div>
 
-  <footer>
-        <div class="footer-category">
-            <div class="container">
-                <h2 class="footer-category-title">Diretório de Marcas</h2>
+  <!-- Toast Container -->
+  <div class="toast-container" id="toast-container"></div>
 
-                <div class="footer-category-box">
-                    <h3 class="category-box-title">Moda:</h3>
 
-                    <a href="#" class="footer-category-link">Camisetas</a>
-                    <a href="#" class="footer-category-link">Camisas</a>
-                    <a href="#" class="footer-category-link">Shorts e Jeans</a>
-                    <a href="#" class="footer-category-link">Jaquetas</a>
-                    <a href="#" class="footer-category-link">Vestidos</a>
-                    <a href="#" class="footer-category-link">Roupas íntimas</a>
-                    <a href="#" class="footer-category-link">Meias</a>
-                </div>
+  <script>
+    // ============================================================
+    // API CONFIG
+    // ============================================================
+    const API_URL = 'function/api.php';
 
-                <div class="footer-category-box">
-                    <h3 class="category-box-title">Calçados:</h3>
+    // ============================================================
+    // FUNÇÕES AUXILIARES
+    // ============================================================
+    function parseNumero(valor) {
+      const num = parseFloat(valor);
+      return isNaN(num) ? 0 : num;
+    }
 
-                    <a href="#" class="footer-category-link">Esportivo</a>
-                    <a href="#" class="footer-category-link">Social</a>
-                    <a href="#" class="footer-category-link">Botas</a>
-                    <a href="#" class="footer-category-link">Casual</a>
-                    <a href="#" class="footer-category-link">Sapatos cowboy</a>
-                    <a href="#" class="footer-category-link">Sapatos de segurança</a>
-                    <a href="#" class="footer-category-link">Sapatos para festas</a>
-                    <a href="#" class="footer-category-link">Marcas</a>
-                    <a href="#" class="footer-category-link">Réplicas</a>
-                    <a href="#" class="footer-category-link">Sapatos alongados</a>
-                </div>
+    function formatarPreco(valor) {
+      const num = parseNumero(valor);
+      return `R$ ${num.toFixed(2).replace('.', ',')}`;
+    }
 
-                <div class="footer-category-box">
-                    <h3 class="category-box-title">Joias:</h3>
+    function formatarData(data) {
+      if (!data) return '---';
+      try {
+        return new Date(data).toLocaleDateString('pt-BR');
+      } catch {
+        return data;
+      }
+    }
 
-                    <a href="#" class="footer-category-link">Colares</a>
-                    <a href="#" class="footer-category-link">Brincos</a>
-                    <a href="#" class="footer-category-link">Alianças</a>
-                    <a href="#" class="footer-category-link">Pingentes</a>
-                    <a href="#" class="footer-category-link">Cristais</a>
-                    <a href="#" class="footer-category-link">Pulseiras</a>
-                    <a href="#" class="footer-category-link">Braceletes</a>
-                    <a href="#" class="footer-category-link">Piercings</a>
-                    <a href="#" class="footer-category-link">Correntes</a>
-                </div>
+    // ============================================================
+    // FUNÇÕES DE API
+    // ============================================================
+    async function apiRequest(action, method = 'GET', data = null, id = null, params = null) {
+      let url = `${API_URL}?action=${action}`;
+      if (id) url += `&id=${id}`;
 
-                <div class="footer-category-box">
-                    <h3 class="category-box-title">Cosméticos:</h3>
+      // Adicionar parâmetros extras (ex: status para pedidos)
+      if (params) {
+        Object.keys(params).forEach(key => {
+          if (params[key]) url += `&${key}=${encodeURIComponent(params[key])}`;
+        });
+      }
 
-                    <a href="#" class="footer-category-link">Xampu</a>
-                    <a href="#" class="footer-category-link">Sabonete líquido</a>
-                    <a href="#" class="footer-category-link">Sabonete facial</a>
-                    <a href="#" class="footer-category-link">Kit de maquiagem</a>
-                    <a href="#" class="footer-category-link">Lápis de olho</a>
-                    <a href="#" class="footer-category-link">Batom</a>
-                    <a href="#" class="footer-category-link">Perfume</a>
-                    <a href="#" class="footer-category-link">Sabonete corporal</a>
-                    <a href="#" class="footer-category-link">Esmalte</a>
-                    <a href="#" class="footer-category-link">Gel para cabelo</a>
-                    <a href="#" class="footer-category-link">Tintura para cabelo</a>
-                    <a href="#" class="footer-category-link">Descolorante</a>
-                    <a href="#" class="footer-category-link">Protetor solar</a>
-                    <a href="#" class="footer-category-link">Loção para pele</a>
-                </div>
-            </div>
-        </div>
+      const options = {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      };
 
-        <div class="footer-nav">
-            <div class="container">
-                <ul class="footer-nav-list">
-                    <li class="footer-nav-item">
-                        <h2 class="nav-title">Categorias Populares</h2>
-                    </li>
+      if (data && (method === 'POST' || method === 'PUT')) {
+        options.body = JSON.stringify(data);
+      }
 
-                    <li class="footer-nav-item">
-                        <a href="#" class="footer-nav-link">Moda</a>
-                    </li>
-                    <li class="footer-nav-item">
-                        <a href="#" class="footer-nav-link">Eletrônicos</a>
-                    </li>
-                    <li class="footer-nav-item">
-                        <a href="#" class="footer-nav-link">Cosméticos</a>
-                    </li>
-                    <li class="footer-nav-item">
-                        <a href="#" class="footer-nav-link">Saúde</a>
-                    </li>
-                    <li class="footer-nav-item">
-                        <a href="#" class="footer-nav-link">Relógios</a>
-                    </li>
-                </ul>
+      try {
+        const response = await fetch(url, options);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return await response.json();
+      } catch (error) {
+        console.error('Erro na requisição:', error);
+        return {
+          success: false,
+          error: error.message
+        };
+      }
+    }
 
-                <ul class="footer-nav-list">
-                    <li class="footer-nav-item">
-                        <h2 class="nav-title">Produtos</h2>
-                    </li>
+    // ============================================================
+    // DASHBOARD
+    // ============================================================
+    async function loadDashboard() {
+      try {
+        const result = await apiRequest('dashboard');
 
-                    <li class="footer-nav-item">
-                        <a href="#" class="footer-nav-link">Moda</a>
-                    </li>
-                    <li class="footer-nav-item">
-                        <a href="#" class="footer-nav-link">Eletrônicos</a>
-                    </li>
-                    <li class="footer-nav-item">
-                        <a href="#" class="footer-nav-link">Cosméticos</a>
-                    </li>
-                    <li class="footer-nav-item">
-                        <a href="#" class="footer-nav-link">Saúde</a>
-                    </li>
-                    <li class="footer-nav-item">
-                        <a href="#" class="footer-nav-link">Relógios</a>
-                    </li>
-                </ul>
+        if (result.success && result.data) {
+          const data = result.data;
 
-                <ul class="footer-nav-list">
-                    <li class="footer-nav-item">
-                        <h2 class="nav-title">Nossa Empresa</h2>
-                    </li>
+          // Atualizar cards com tratamento de números
+          document.getElementById('stat-produtos').textContent = parseNumero(data.total_produtos);
+          document.getElementById('stat-pedidos').textContent = parseNumero(data.pedidos_hoje);
+          document.getElementById('stat-faturamento').textContent = formatarPreco(data.faturamento_mensal);
+          document.getElementById('stat-clientes').textContent = parseNumero(data.clientes_ativos);
+          document.getElementById('stat-falta').textContent = parseNumero(data.produtos_falta);
 
-                    <li class="footer-nav-item">
-                        <a href="#" class="footer-nav-link">Entrega</a>
-                    </li>
-                    <li class="footer-nav-item">
-                        <a href="#" class="footer-nav-link">Aviso Legal</a>
-                    </li>
-                    <li class="footer-nav-item">
-                        <a href="#" class="footer-nav-link">Termos e Condições</a>
-                    </li>
-                    <li class="footer-nav-item">
-                        <a href="#" class="footer-nav-link">Sobre nós</a>
-                    </li>
-                    <li class="footer-nav-item">
-                        <a href="#" class="footer-nav-link">Pagamento Seguro</a>
-                    </li>
-                </ul>
+          // Atualizar badges
+          document.getElementById('badge-produtos').textContent = parseNumero(data.total_produtos);
+          document.getElementById('badge-pedidos').textContent = parseNumero(data.pedidos_hoje);
 
-                <ul class="footer-nav-list">
-                    <li class="footer-nav-item">
-                        <h2 class="nav-title">Serviços</h2>
-                    </li>
+          // Atualizar últimos pedidos
+          const tbody = document.getElementById('ultimos-pedidos');
+          if (data.ultimos_pedidos && data.ultimos_pedidos.length > 0) {
+            tbody.innerHTML = '';
+            data.ultimos_pedidos.forEach(pedido => {
+              const statusMap = {
+                'pendente': 'pending',
+                'pago': 'paid',
+                'processando': 'shipped',
+                'enviado': 'shipped',
+                'entregue': 'delivered',
+                'cancelado': 'cancelled'
+              };
+              const statusClass = statusMap[pedido.status_pedido] || 'pending';
+              const statusLabel = {
+                'pendente': 'Pendente',
+                'pago': 'Pago',
+                'processando': 'Processando',
+                'enviado': 'Enviado',
+                'entregue': 'Entregue',
+                'cancelado': 'Cancelado'
+              } [pedido.status_pedido] || pedido.status_pedido;
 
-                    <li class="footer-nav-item">
-                        <a href="#" class="footer-nav-link">Queda de preços</a>
-                    </li>
-                    <li class="footer-nav-item">
-                        <a href="#" class="footer-nav-link">Novos produtos</a>
-                    </li>
-                    <li class="footer-nav-item">
-                        <a href="#" class="footer-nav-link">Melhores vendas</a>
-                    </li>
-                    <li class="footer-nav-item">
-                        <a href="#" class="footer-nav-link">Contate-nos</a>
-                    </li>
-                    <li class="footer-nav-item">
-                        <a href="#" class="footer-nav-link">Mapa do site</a>
-                    </li>
-                </ul>
+              tbody.innerHTML += `
+                            <tr>
+                                <td><strong>#${String(pedido.id_pedido || 0).padStart(3, '0')}</strong></td>
+                                <td>${pedido.cliente || 'Cliente'}</td>
+                                <td>${formatarPreco(pedido.total)}</td>
+                                <td>${formatarData(pedido.data_pedido)}</td>
+                                <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+                            </tr>
+                        `;
+            });
+          } else {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--gray-500);">Nenhum pedido recente</td></tr>`;
+          }
 
-                <ul class="footer-nav-list">
-                    <li class="footer-nav-item">
-                        <h2 class="nav-title">Contato</h2>
-                    </li>
+          // Atualizar produtos mais vendidos
+          const tbodyVendidos = document.getElementById('mais-vendidos');
+          if (data.mais_vendidos && data.mais_vendidos.length > 0) {
+            tbodyVendidos.innerHTML = '';
+            data.mais_vendidos.forEach(produto => {
+              tbodyVendidos.innerHTML += `
+                            <tr>
+                                <td>${produto.nome || 'Produto'}</td>
+                                <td>${produto.categoria || 'Sem categoria'}</td>
+                                <td>${parseNumero(produto.vendas)}</td>
+                                <td>${formatarPreco(produto.receita)}</td>
+                            </tr>
+                        `;
+            });
+          } else {
+            tbodyVendidos.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--gray-500);">Nenhum produto vendido</td></tr>`;
+          }
+        } else {
+          // Dados simulados para demonstração
+          document.getElementById('stat-produtos').textContent = '48';
+          document.getElementById('stat-pedidos').textContent = '18';
+          document.getElementById('stat-faturamento').textContent = 'R$ 4.250,00';
+          document.getElementById('stat-clientes').textContent = '156';
+          document.getElementById('stat-falta').textContent = '3';
+          document.getElementById('badge-produtos').textContent = '48';
+          document.getElementById('badge-pedidos').textContent = '18';
+        }
+      } catch (error) {
+        console.error('Erro ao carregar dashboard:', error);
+        // Dados de fallback
+        document.getElementById('stat-produtos').textContent = '48';
+        document.getElementById('stat-pedidos').textContent = '18';
+        document.getElementById('stat-faturamento').textContent = 'R$ 4.250,00';
+        document.getElementById('stat-clientes').textContent = '156';
+        document.getElementById('stat-falta').textContent = '3';
+      }
+    }
 
-                    <li class="footer-nav-item flex">
-                        <div class="icon-box">
-                            <ion-icon name="location-outline"></ion-icon>
-                        </div>
+    // ============================================================
+    // PRODUTOS
+    // ============================================================
+    async function loadProdutos() {
+      document.getElementById('produtos-loading').style.display = 'flex';
+      document.getElementById('produtos-content').style.display = 'none';
 
-                        <address class="content">
-                            COHAB II Q19 CASA 302 URUGUAINA RS - BRASIL
-                        </address>
-                    </li>
+      try {
+        const result = await apiRequest('produtos');
 
-                    <li class="footer-nav-item flex">
-                        <div class="icon-box">
-                            <ion-icon name="call-outline"></ion-icon>
-                        </div>
+        document.getElementById('produtos-loading').style.display = 'none';
+        document.getElementById('produtos-content').style.display = 'block';
 
-                        <a href="tel:+607936-8058" class="footer-nav-link">+55(55) 99998-2163 </a>
-                    </li>
+        if (result.success && result.data) {
+          const tbody = document.getElementById('tabela-produtos');
+          tbody.innerHTML = '';
 
-                    <li class="footer-nav-item flex">
-                        <div class="icon-box">
-                            <ion-icon name="mail-outline"></ion-icon>
-                        </div>
+          if (result.data.length === 0) {
+            tbody.innerHTML = `
+                        <tr>
+                            <td colspan="8" style="text-align: center; padding: 40px; color: var(--gray-500);">
+                                <div class="empty-state">
+                                    <span class="icon">📦</span>
+                                    <h4>Nenhum produto cadastrado</h4>
+                                    <p>Clique em "Novo Produto" para começar</p>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+            return;
+          }
 
-                        <a href="mailto:example@gmail.com" class="footer-nav-link">AL_artes@gmail.com</a>
-                    </li>
-                </ul>
+          result.data.forEach(produto => {
+            // Converter valores com segurança
+            const precoVenda = parseNumero(produto.preco_venda);
+            const estoqueAtual = parseInt(produto.estoque_atual) || 0;
 
-                <ul class="footer-nav-list">
-                    <li class="footer-nav-item">
-                        <h2 class="nav-title">Siga-nos</h2>
-                    </li>
+            const statusClass = produto.status === 'ativo' ? 'active' : 'inactive';
+            const statusLabel = produto.status === 'ativo' ? 'Ativo' :
+              produto.status === 'inativo' ? 'Inativo' :
+              produto.status === 'rascunho' ? 'Rascunho' : 'Esgotado';
 
-                    <li>
-                        <ul class="social-link">
-                            <li class="footer-nav-item">
-                                <a href="#" class="footer-nav-link"><ion-icon name="logo-facebook"></ion-icon></a>
-                            </li>
+            tbody.innerHTML += `
+                        <tr>
+                            <td>${produto.id_produto || 0}</td>
+                            <td><div class="product-thumb">${produto.imagem_principal ? '🖼️' : '📦'}</div></td>
+                            <td><strong>${produto.nome || 'Sem nome'}</strong></td>
+                            <td>${produto.sku || '---'}</td>
+                            <td>${formatarPreco(precoVenda)}</td>
+                            <td>${estoqueAtual}</td>
+                            <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+                            <td>
+                                <button class="btn btn-primary btn-sm" onclick="editarProduto(${produto.id_produto})">✏️</button>
+                                <button class="btn btn-danger btn-sm" onclick="excluirProduto(${produto.id_produto})">🗑️</button>
+                            </td>
+                        </tr>
+                    `;
+          });
+        } else {
+          document.getElementById('tabela-produtos').innerHTML = `
+                    <tr>
+                        <td colspan="8" style="text-align: center; color: var(--gray-500);">Erro ao carregar produtos: ${result.error || 'Erro desconhecido'}</td>
+                    </tr>
+                `;
+        }
+      } catch (error) {
+        console.error('Erro ao carregar produtos:', error);
+        document.getElementById('produtos-loading').style.display = 'none';
+        document.getElementById('produtos-content').style.display = 'block';
+        document.getElementById('tabela-produtos').innerHTML = `
+                <tr>
+                    <td colspan="8" style="text-align: center; color: var(--danger);">Erro ao carregar produtos: ${error.message}</td>
+                </tr>
+            `;
+      }
+    }
 
-                            <li class="footer-nav-item">
-                                <a href="#" class="footer-nav-link"><ion-icon name="logo-twitter"></ion-icon></a>
-                            </li>
+    async function criarProduto(data) {
+      const result = await apiRequest('produto', 'POST', data);
+      if (result.success) {
+        showToast('✅ Produto criado com sucesso!', 'success');
+        loadProdutos();
+        fecharModal();
+      } else {
+        showToast('❌ Erro ao criar produto: ' + (result.error || 'Erro desconhecido'), 'error');
+      }
+      return result;
+    }
 
-                            <li class="footer-nav-item">
-                                <a href="#" class="footer-nav-link"><ion-icon name="logo-linkedin"></ion-icon></a>
-                            </li>
+    async function editarProduto(id) {
+      try {
+        const result = await apiRequest('produto', 'GET', null, id);
+        if (result.success && result.data) {
+          const produto = result.data;
+          document.getElementById('modal-titulo').textContent = 'Editar Produto';
+          document.getElementById('produto-id').value = produto.id_produto || '';
+          document.getElementById('produto-nome').value = produto.nome || '';
+          document.getElementById('produto-descricao').value = produto.descricao || '';
+          document.getElementById('produto-sku').value = produto.sku || '';
+          document.getElementById('produto-preco').value = parseNumero(produto.preco_venda);
+          document.getElementById('produto-estoque').value = parseInt(produto.estoque_atual) || 0;
+          document.getElementById('produto-status').value = produto.status || 'ativo';
+          document.getElementById('produto-destaque').checked = produto.destaque == 1;
+          document.getElementById('produto-novo').checked = produto.novo == 1;
 
-                            <li class="footer-nav-item">
-                                <a href="#" class="footer-nav-link"><ion-icon name="logo-instagram"></ion-icon></a>
-                            </li>
-                        </ul>
-                    </li>
-                </ul>
-            </div>
-        </div>
+          document.getElementById('modal-produto').classList.add('show');
+        } else {
+          showToast('❌ Erro ao carregar produto: ' + (result.error || 'Produto não encontrado'), 'error');
+        }
+      } catch (error) {
+        showToast('❌ Erro ao carregar produto: ' + error.message, 'error');
+      }
+    }
 
-        <div class="footer-bottom">
-            <div class="container">
+    async function excluirProduto(id) {
+      if (confirm('Tem certeza que deseja excluir este produto?')) {
+        const result = await apiRequest('produto', 'DELETE', null, id);
+        if (result.success) {
+          showToast('🗑️ Produto removido com sucesso!', 'success');
+          loadProdutos();
+        } else {
+          showToast('❌ Erro ao excluir produto: ' + (result.error || 'Erro desconhecido'), 'error');
+        }
+      }
+    }
 
-                <p class="copyright">
-                    Copyright &copy; <a href="#">AL-ARTES</a> todos os direitos reservados
-                </p>
-            </div>
-        </div>
-    </footer>
+    async function salvarProduto() {
+      const id = document.getElementById('produto-id').value;
+      const data = {
+        nome: document.getElementById('produto-nome').value.trim(),
+        descricao: document.getElementById('produto-descricao').value.trim(),
+        sku: document.getElementById('produto-sku').value.trim().toUpperCase(),
+        preco_venda: parseNumero(document.getElementById('produto-preco').value),
+        estoque_atual: parseInt(document.getElementById('produto-estoque').value) || 0,
+        status: document.getElementById('produto-status').value,
+        destaque: document.getElementById('produto-destaque').checked ? 1 : 0,
+        novo: document.getElementById('produto-novo').checked ? 1 : 0
+      };
 
-    <script src="main.js"></script>
+      // Validação básica
+      if (!data.nome) {
+        showToast('⚠️ O nome do produto é obrigatório', 'warning');
+        return;
+      }
+      if (data.preco_venda <= 0) {
+        showToast('⚠️ O preço de venda deve ser maior que zero', 'warning');
+        return;
+      }
 
-    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
-    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+      let result;
+      if (id) {
+        result = await apiRequest('produto', 'PUT', data, id);
+      } else {
+        result = await apiRequest('produto', 'POST', data);
+      }
+
+      if (result.success) {
+        showToast('✅ Produto salvo com sucesso!', 'success');
+        loadProdutos();
+        fecharModal();
+      } else {
+        showToast('❌ Erro ao salvar produto: ' + (result.error || 'Erro desconhecido'), 'error');
+      }
+    }
+
+    // ============================================================
+    // PEDIDOS
+    // ============================================================
+    async function loadPedidos() {
+      const status = document.getElementById('filtro-status-pedido').value;
+
+      document.getElementById('pedidos-loading').style.display = 'flex';
+      document.getElementById('pedidos-content').style.display = 'none';
+
+      try {
+        const result = await apiRequest('pedidos', 'GET', null, null, {
+          status: status || undefined
+        });
+
+        document.getElementById('pedidos-loading').style.display = 'none';
+        document.getElementById('pedidos-content').style.display = 'block';
+
+        if (result.success && result.data) {
+          const tbody = document.getElementById('tabela-pedidos');
+          tbody.innerHTML = '';
+
+          if (result.data.length === 0) {
+            tbody.innerHTML = `
+                        <tr>
+                            <td colspan="7" style="text-align: center; padding: 40px; color: var(--gray-500);">
+                                <div class="empty-state">
+                                    <span class="icon">📋</span>
+                                    <h4>Nenhum pedido encontrado</h4>
+                                    <p>Os pedidos aparecerão aqui quando forem realizados</p>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+            return;
+          }
+
+          result.data.forEach(pedido => {
+            const statusMap = {
+              'pendente': 'pending',
+              'pago': 'paid',
+              'processando': 'shipped',
+              'enviado': 'shipped',
+              'entregue': 'delivered',
+              'cancelado': 'cancelled'
+            };
+            const statusClass = statusMap[pedido.status_pedido] || 'pending';
+            const statusLabel = {
+              'pendente': 'Pendente',
+              'pago': 'Pago',
+              'processando': 'Processando',
+              'enviado': 'Enviado',
+              'entregue': 'Entregue',
+              'cancelado': 'Cancelado'
+            } [pedido.status_pedido] || pedido.status_pedido;
+
+            const itensCount = pedido.itens ? pedido.itens.length : 0;
+
+            tbody.innerHTML += `
+                        <tr>
+                            <td><strong>#${String(pedido.id_pedido || 0).padStart(3, '0')}</strong></td>
+                            <td>${pedido.cliente || 'Cliente'}</td>
+                            <td>${itensCount} itens</td>
+                            <td>${formatarPreco(pedido.total)}</td>
+                            <td>${formatarData(pedido.data_pedido)}</td>
+                            <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+                            <td>
+                                <select onchange="atualizarStatusPedido(${pedido.id_pedido}, this.value)" class="btn btn-outline btn-sm">
+                                    <option value="pendente" ${pedido.status_pedido === 'pendente' ? 'selected' : ''}>Pendente</option>
+                                    <option value="pago" ${pedido.status_pedido === 'pago' ? 'selected' : ''}>Pago</option>
+                                    <option value="processando" ${pedido.status_pedido === 'processando' ? 'selected' : ''}>Processando</option>
+                                    <option value="enviado" ${pedido.status_pedido === 'enviado' ? 'selected' : ''}>Enviado</option>
+                                    <option value="entregue" ${pedido.status_pedido === 'entregue' ? 'selected' : ''}>Entregue</option>
+                                    <option value="cancelado" ${pedido.status_pedido === 'cancelado' ? 'selected' : ''}>Cancelado</option>
+                                </select>
+                            </td>
+                        </tr>
+                    `;
+          });
+        } else {
+          document.getElementById('tabela-pedidos').innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align: center; color: var(--gray-500);">Erro ao carregar pedidos</td>
+                    </tr>
+                `;
+        }
+      } catch (error) {
+        console.error('Erro ao carregar pedidos:', error);
+        document.getElementById('pedidos-loading').style.display = 'none';
+        document.getElementById('pedidos-content').style.display = 'block';
+        document.getElementById('tabela-pedidos').innerHTML = `
+                <tr>
+                    <td colspan="7" style="text-align: center; color: var(--danger);">Erro ao carregar pedidos: ${error.message}</td>
+                </tr>
+            `;
+      }
+    }
+
+    async function atualizarStatusPedido(id, status) {
+      try {
+        const result = await apiRequest('pedido', 'PUT', {
+          status
+        }, id);
+        if (result.success) {
+          showToast('✅ Status do pedido atualizado!', 'success');
+          loadPedidos();
+        } else {
+          showToast('❌ Erro ao atualizar status: ' + (result.error || 'Erro desconhecido'), 'error');
+        }
+      } catch (error) {
+        showToast('❌ Erro ao atualizar status: ' + error.message, 'error');
+      }
+    }
+
+    // ============================================================
+    // CLIENTES
+    // ============================================================
+    async function loadClientes() {
+      document.getElementById('clientes-loading').style.display = 'flex';
+      document.getElementById('clientes-content').style.display = 'none';
+
+      try {
+        const result = await apiRequest('clientes');
+
+        document.getElementById('clientes-loading').style.display = 'none';
+        document.getElementById('clientes-content').style.display = 'block';
+
+        if (result.success && result.data) {
+          const tbody = document.getElementById('tabela-clientes');
+          tbody.innerHTML = '';
+
+          if (result.data.length === 0) {
+            tbody.innerHTML = `
+                        <tr>
+                            <td colspan="7" style="text-align: center; padding: 40px; color: var(--gray-500);">
+                                <div class="empty-state">
+                                    <span class="icon">👤</span>
+                                    <h4>Nenhum cliente cadastrado</h4>
+                                    <p>Os clientes aparecerão aqui quando se cadastrarem</p>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+            return;
+          }
+
+          result.data.forEach(cliente => {
+            const statusClass = cliente.status === 'ativo' ? 'active' : 'inactive';
+            const statusLabel = cliente.status === 'ativo' ? 'Ativo' : 'Inativo';
+
+            tbody.innerHTML += `
+                        <tr>
+                            <td>${cliente.id_usuario || 0}</td>
+                            <td><strong>${cliente.nome_completo || 'Sem nome'}</strong></td>
+                            <td>${cliente.email || '---'}</td>
+                            <td>${cliente.cpf || '---'}</td>
+                            <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+                            <td>${formatarData(cliente.data_cadastro)}</td>
+                            <td>
+                                <button class="btn btn-primary btn-sm" onclick="verCliente(${cliente.id_usuario})">👁️</button>
+                            </td>
+                        </tr>
+                    `;
+          });
+        } else {
+          document.getElementById('tabela-clientes').innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align: center; color: var(--gray-500);">Erro ao carregar clientes</td>
+                    </tr>
+                `;
+        }
+      } catch (error) {
+        console.error('Erro ao carregar clientes:', error);
+        document.getElementById('clientes-loading').style.display = 'none';
+        document.getElementById('clientes-content').style.display = 'block';
+        document.getElementById('tabela-clientes').innerHTML = `
+                <tr>
+                    <td colspan="7" style="text-align: center; color: var(--danger);">Erro ao carregar clientes: ${error.message}</td>
+                </tr>
+            `;
+      }
+    }
+
+    async function verCliente(id) {
+      try {
+        const result = await apiRequest('cliente', 'GET', null, id);
+        if (result.success && result.data) {
+          const cliente = result.data;
+          let enderecosStr = 'Nenhum endereço cadastrado';
+          if (cliente.enderecos && cliente.enderecos.length > 0) {
+            enderecosStr = cliente.enderecos.map(e =>
+              `${e.logradouro || ''}, ${e.numero || ''} - ${e.bairro || ''}, ${e.cidade || ''}/${e.estado || ''}`
+            ).join('\n');
+          }
+
+          alert(`👤 Dados do Cliente\n\n` +
+            `Nome: ${cliente.nome_completo || '---'}\n` +
+            `Email: ${cliente.email || '---'}\n` +
+            `CPF: ${cliente.cpf || 'Não informado'}\n` +
+            `Telefone: ${cliente.telefone || 'Não informado'}\n` +
+            `Status: ${cliente.status || '---'}\n` +
+            `Cadastro: ${formatarData(cliente.data_cadastro)}\n\n` +
+            `📌 Endereços:\n${enderecosStr}`);
+        } else {
+          showToast('❌ Erro ao carregar cliente: ' + (result.error || 'Cliente não encontrado'), 'error');
+        }
+      } catch (error) {
+        showToast('❌ Erro ao carregar cliente: ' + error.message, 'error');
+      }
+    }
+
+    // ============================================================
+    // CATEGORIAS
+    // ============================================================
+    async function loadCategorias() {
+      document.getElementById('categorias-loading').style.display = 'flex';
+      document.getElementById('categorias-content').style.display = 'none';
+
+      try {
+        const result = await apiRequest('categorias');
+
+        document.getElementById('categorias-loading').style.display = 'none';
+        document.getElementById('categorias-content').style.display = 'block';
+
+        if (result.success && result.data) {
+          const tbody = document.getElementById('tabela-categorias');
+          tbody.innerHTML = '';
+
+          if (result.data.length === 0) {
+            tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 40px; color: var(--gray-500);">
+                                <div class="empty-state">
+                                    <span class="icon">📂</span>
+                                    <h4>Nenhuma categoria cadastrada</h4>
+                                    <p>Clique em "Nova Categoria" para começar</p>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+            return;
+          }
+
+          result.data.forEach(categoria => {
+            const statusClass = categoria.status === 'ativo' ? 'active' : 'inactive';
+            const statusLabel = categoria.status === 'ativo' ? 'Ativo' : 'Inativo';
+
+            tbody.innerHTML += `
+                        <tr>
+                            <td>${categoria.id_categoria || 0}</td>
+                            <td style="font-size: 1.5rem;">${categoria.icone || '📂'}</td>
+                            <td><strong>${categoria.nome || 'Sem nome'}</strong></td>
+                            <td>${categoria.slug || '---'}</td>
+                            <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+                            <td>
+                                <button class="btn btn-danger btn-sm" onclick="excluirCategoria(${categoria.id_categoria})">🗑️</button>
+                            </td>
+                        </tr>
+                    `;
+          });
+        } else {
+          document.getElementById('tabela-categorias').innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: var(--gray-500);">Erro ao carregar categorias</td>
+                    </tr>
+                `;
+        }
+      } catch (error) {
+        console.error('Erro ao carregar categorias:', error);
+        document.getElementById('categorias-loading').style.display = 'none';
+        document.getElementById('categorias-content').style.display = 'block';
+        document.getElementById('tabela-categorias').innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align: center; color: var(--danger);">Erro ao carregar categorias: ${error.message}</td>
+                </tr>
+            `;
+      }
+    }
+
+    function abrirModalCategoria() {
+      document.getElementById('modal-categoria').classList.add('show');
+      document.getElementById('categoria-nome').value = '';
+      document.getElementById('categoria-descricao').value = '';
+      document.getElementById('categoria-icone').value = '';
+      document.getElementById('categoria-slug').value = '';
+    }
+
+    function fecharModalCategoria() {
+      document.getElementById('modal-categoria').classList.remove('show');
+    }
+
+    async function salvarCategoria() {
+      const data = {
+        nome: document.getElementById('categoria-nome').value.trim(),
+        descricao: document.getElementById('categoria-descricao').value.trim(),
+        icone: document.getElementById('categoria-icone').value.trim(),
+        slug: document.getElementById('categoria-slug').value.trim() ||
+          document.getElementById('categoria-nome').value.trim().toLowerCase().replace(/ /g, '-')
+      };
+
+      if (!data.nome) {
+        showToast('⚠️ O nome da categoria é obrigatório', 'warning');
+        return;
+      }
+
+      const result = await apiRequest('categoria', 'POST', data);
+      if (result.success) {
+        showToast('✅ Categoria criada com sucesso!', 'success');
+        loadCategorias();
+        fecharModalCategoria();
+      } else {
+        showToast('❌ Erro ao criar categoria: ' + (result.error || 'Erro desconhecido'), 'error');
+      }
+    }
+
+    async function excluirCategoria(id) {
+      if (confirm('Tem certeza que deseja excluir esta categoria?')) {
+        try {
+          const result = await apiRequest('categoria', 'DELETE', null, id);
+          if (result.success) {
+            showToast('✅ Categoria removida com sucesso!', 'success');
+            loadCategorias();
+          } else {
+            showToast('❌ Erro ao excluir categoria: ' + (result.error || 'Erro desconhecido'), 'error');
+          }
+        } catch (error) {
+          showToast('❌ Erro ao excluir categoria: ' + error.message, 'error');
+        }
+      }
+    }
+
+    // ============================================================
+    // CUPONS
+    // ============================================================
+    async function loadCupons() {
+      document.getElementById('cupons-loading').style.display = 'flex';
+      document.getElementById('cupons-content').style.display = 'none';
+
+      try {
+        const result = await apiRequest('cupons');
+
+        document.getElementById('cupons-loading').style.display = 'none';
+        document.getElementById('cupons-content').style.display = 'block';
+
+        if (result.success && result.data) {
+          const tbody = document.getElementById('tabela-cupons');
+          tbody.innerHTML = '';
+
+          if (result.data.length === 0) {
+            tbody.innerHTML = `
+                        <tr>
+                            <td colspan="7" style="text-align: center; padding: 40px; color: var(--gray-500);">
+                                <div class="empty-state">
+                                    <span class="icon">🎫</span>
+                                    <h4>Nenhum cupom cadastrado</h4>
+                                    <p>Clique em "Novo Cupom" para começar</p>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+            return;
+          }
+
+          result.data.forEach(cupom => {
+            const statusClass = cupom.status === 'ativo' ? 'active' : 'inactive';
+            const statusLabel = cupom.status === 'ativo' ? 'Ativo' : 'Inativo';
+            const descontoStr = cupom.tipo_desconto === 'percentual' ?
+              `${parseNumero(cupom.valor_desconto)}%` :
+              formatarPreco(cupom.valor_desconto);
+            const validade = `${formatarData(cupom.data_inicio)} - ${formatarData(cupom.data_fim)}`;
+
+            tbody.innerHTML += `
+                        <tr>
+                            <td>${cupom.id_cupom || 0}</td>
+                            <td><strong>${cupom.codigo || '---'}</strong></td>
+                            <td>${descontoStr}</td>
+                            <td>${validade}</td>
+                            <td>${parseNumero(cupom.uso_atual)}/${parseNumero(cupom.uso_total)}</td>
+                            <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+                            <td>
+                                <button class="btn btn-danger btn-sm" onclick="excluirCupom(${cupom.id_cupom})">🗑️</button>
+                            </td>
+                        </tr>
+                    `;
+          });
+        } else {
+          document.getElementById('tabela-cupons').innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align: center; color: var(--gray-500);">Erro ao carregar cupons</td>
+                    </tr>
+                `;
+        }
+      } catch (error) {
+        console.error('Erro ao carregar cupons:', error);
+        document.getElementById('cupons-loading').style.display = 'none';
+        document.getElementById('cupons-content').style.display = 'block';
+        document.getElementById('tabela-cupons').innerHTML = `
+                <tr>
+                    <td colspan="7" style="text-align: center; color: var(--danger);">Erro ao carregar cupons: ${error.message}</td>
+                </tr>
+            `;
+      }
+    }
+
+    function abrirModalCupom() {
+      document.getElementById('modal-cupom').classList.add('show');
+      document.getElementById('cupom-codigo').value = '';
+      document.getElementById('cupom-descricao').value = '';
+      document.getElementById('cupom-tipo').value = 'percentual';
+      document.getElementById('cupom-valor').value = '';
+      document.getElementById('cupom-inicio').value = '';
+      document.getElementById('cupom-fim').value = '';
+      document.getElementById('cupom-usos').value = '1';
+    }
+
+    function fecharModalCupom() {
+      document.getElementById('modal-cupom').classList.remove('show');
+    }
+
+    async function salvarCupom() {
+      const data = {
+        codigo: document.getElementById('cupom-codigo').value.trim().toUpperCase(),
+        descricao: document.getElementById('cupom-descricao').value.trim(),
+        tipo_desconto: document.getElementById('cupom-tipo').value,
+        valor_desconto: parseNumero(document.getElementById('cupom-valor').value),
+        data_inicio: document.getElementById('cupom-inicio').value || new Date().toISOString().split('T')[0],
+        data_fim: document.getElementById('cupom-fim').value || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        uso_total: parseInt(document.getElementById('cupom-usos').value) || 1,
+        status: 'ativo'
+      };
+
+      if (!data.codigo) {
+        showToast('⚠️ O código do cupom é obrigatório', 'warning');
+        return;
+      }
+      if (data.valor_desconto <= 0) {
+        showToast('⚠️ O valor do desconto deve ser maior que zero', 'warning');
+        return;
+      }
+
+      const result = await apiRequest('cupom', 'POST', data);
+      if (result.success) {
+        showToast('✅ Cupom criado com sucesso!', 'success');
+        loadCupons();
+        fecharModalCupom();
+      } else {
+        showToast('❌ Erro ao criar cupom: ' + (result.error || 'Erro desconhecido'), 'error');
+      }
+    }
+
+    async function excluirCupom(id) {
+      if (confirm('Tem certeza que deseja excluir este cupom?')) {
+        try {
+          const result = await apiRequest('cupom', 'DELETE', null, id);
+          if (result.success) {
+            showToast('✅ Cupom removido com sucesso!', 'success');
+            loadCupons();
+          } else {
+            showToast('❌ Erro ao excluir cupom: ' + (result.error || 'Erro desconhecido'), 'error');
+          }
+        } catch (error) {
+          showToast('❌ Erro ao excluir cupom: ' + error.message, 'error');
+        }
+      }
+    }
+
+    // ============================================================
+    // CONFIGURAÇÕES
+    // ============================================================
+    function salvarConfiguracoes() {
+      const config = {
+        nome_loja: document.getElementById('config-nome-loja').value,
+        email_contato: document.getElementById('config-email-contato').value,
+        telefone: document.getElementById('config-telefone').value,
+        moeda: document.getElementById('config-moeda').value,
+        frete_padrao: parseNumero(document.getElementById('config-frete').value),
+        status_loja: document.getElementById('config-status-loja').value,
+        estoque_negativo: document.getElementById('config-estoque-negativo').checked
+      };
+
+      // Salvar no localStorage para persistência local
+      localStorage.setItem('construmix_config', JSON.stringify(config));
+
+      showToast('✅ Configurações salvas com sucesso!', 'success');
+    }
+
+    function carregarConfiguracoes() {
+      const saved = localStorage.getItem('construmix_config');
+      if (saved) {
+        try {
+          const config = JSON.parse(saved);
+          document.getElementById('config-nome-loja').value = config.nome_loja || 'Construmix';
+          document.getElementById('config-email-contato').value = config.email_contato || 'contato@construmix.com';
+          document.getElementById('config-telefone').value = config.telefone || '(11) 99999-9999';
+          document.getElementById('config-moeda').value = config.moeda || 'BRL';
+          document.getElementById('config-frete').value = config.frete_padrao || 15.00;
+          document.getElementById('config-status-loja').value = config.status_loja || 'ativa';
+          document.getElementById('config-estoque-negativo').checked = config.estoque_negativo !== undefined ? config.estoque_negativo : true;
+        } catch (e) {
+          console.error('Erro ao carregar configurações:', e);
+        }
+      }
+    }
+
+    // ============================================================
+    // TOAST NOTIFICATION
+    // ============================================================
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+
+      // Forçar reflow para animação
+      void toast.offsetWidth;
+
+      setTimeout(() => toast.classList.add('show'), 10);
+
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 400);
+      }, 3000);
+    }
+
+    // ============================================================
+    // MODAL FUNCTIONS
+    // ============================================================
+    function abrirModalProduto() {
+      document.getElementById('modal-titulo').textContent = 'Novo Produto';
+      document.getElementById('produto-id').value = '';
+      document.getElementById('produto-nome').value = '';
+      document.getElementById('produto-descricao').value = '';
+      document.getElementById('produto-sku').value = '';
+      document.getElementById('produto-preco').value = '';
+      document.getElementById('produto-estoque').value = '0';
+      document.getElementById('produto-status').value = 'ativo';
+      document.getElementById('produto-destaque').checked = false;
+      document.getElementById('produto-novo').checked = false;
+      document.getElementById('modal-produto').classList.add('show');
+    }
+
+    function fecharModal() {
+      document.getElementById('modal-produto').classList.remove('show');
+    }
+
+    // ============================================================
+    // NAVEGAÇÃO
+    // ============================================================
+    function showModule(module) {
+      // Esconder todos os módulos
+      document.querySelectorAll('.module').forEach(m => m.classList.remove('active'));
+
+      // Mostrar o módulo selecionado
+      const target = document.getElementById(`mod-${module}`);
+      if (target) target.classList.add('active');
+
+      // Atualizar menu
+      document.querySelectorAll('.sidebar-menu a').forEach(a => a.classList.remove('active'));
+      document.querySelector(`.sidebar-menu a[data-module="${module}"]`)?.classList.add('active');
+
+      // Atualizar título
+      const titles = {
+        'dashboard': 'Dashboard',
+        'produtos': 'Produtos',
+        'pedidos': 'Pedidos',
+        'clientes': 'Clientes',
+        'categorias': 'Categorias',
+        'cupons': 'Cupons',
+        'configuracoes': 'Configurações'
+      };
+      const subtitles = {
+        'dashboard': 'Visão geral da loja',
+        'produtos': 'Gerenciar produtos da loja',
+        'pedidos': 'Gerenciar pedidos dos clientes',
+        'clientes': 'Gerenciar clientes cadastrados',
+        'categorias': 'Gerenciar categorias de produtos',
+        'cupons': 'Gerenciar cupons de desconto',
+        'configuracoes': 'Configurações do sistema'
+      };
+      document.querySelector('.page-title').innerHTML = `${titles[module] || module} <small>${subtitles[module] || ''}</small>`;
+
+      // Carregar dados conforme módulo
+      switch (module) {
+        case 'dashboard':
+          loadDashboard();
+          break;
+        case 'produtos':
+          loadProdutos();
+          break;
+        case 'pedidos':
+          loadPedidos();
+          break;
+        case 'clientes':
+          loadClientes();
+          break;
+        case 'categorias':
+          loadCategorias();
+          break;
+        case 'cupons':
+          loadCupons();
+          break;
+      }
+    }
+
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('open');
+    }
+
+    function logout() {
+      if (confirm('Deseja realmente sair?')) {
+        window.location.href = 'login.php';
+      }
+    }
+
+    // ============================================================
+    // INICIALIZAÇÃO
+    // ============================================================
+    document.addEventListener('DOMContentLoaded', function() {
+      // Menu navigation
+      document.querySelectorAll('.sidebar-menu a[data-module]').forEach(link => {
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          const module = link.dataset.module;
+          showModule(module);
+
+          // Fechar sidebar em mobile
+          if (window.innerWidth <= 768) {
+            document.getElementById('sidebar').classList.remove('open');
+          }
+        });
+      });
+
+      // Fechar modal com ESC
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          fecharModal();
+          fecharModalCategoria();
+          fecharModalCupom();
+        }
+      });
+
+      // Clicar fora do modal para fechar
+      document.querySelectorAll('.modal-overlay').forEach(modal => {
+        modal.addEventListener('click', (e) => {
+          if (e.target === e.currentTarget) {
+            modal.classList.remove('show');
+          }
+        });
+      });
+
+      // Carregar configurações
+      carregarConfiguracoes();
+
+      // Carregar dashboard inicial
+      loadDashboard();
+
+      // Mostrar mensagem de boas-vindas
+      setTimeout(() => {
+        showToast('👋 Bem-vindo ao Painel Construmix!', 'success');
+      }, 500);
+    });
+
+    // ============================================================
+    // EXPORTAR FUNÇÕES PARA O GLOBAL
+    // ============================================================
+    window.showModule = showModule;
+    window.toggleSidebar = toggleSidebar;
+    window.logout = logout;
+    window.abrirModalProduto = abrirModalProduto;
+    window.fecharModal = fecharModal;
+    window.salvarProduto = salvarProduto;
+    window.editarProduto = editarProduto;
+    window.excluirProduto = excluirProduto;
+    window.atualizarStatusPedido = atualizarStatusPedido;
+    window.showToast = showToast;
+    window.loadPedidos = loadPedidos;
+    window.loadClientes = loadClientes;
+    window.verCliente = verCliente;
+    window.abrirModalCategoria = abrirModalCategoria;
+    window.fecharModalCategoria = fecharModalCategoria;
+    window.salvarCategoria = salvarCategoria;
+    window.excluirCategoria = excluirCategoria;
+    window.abrirModalCupom = abrirModalCupom;
+    window.fecharModalCupom = fecharModalCupom;
+    window.salvarCupom = salvarCupom;
+    window.excluirCupom = excluirCupom;
+    window.salvarConfiguracoes = salvarConfiguracoes;
+  </script>
+
+
 </body>
 
 </html>
